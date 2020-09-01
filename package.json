@@ -1,26 +1,33 @@
 {
-  "name": "onboard-gabriel-minossi",
-  "version": "1.0.0",
-  "description": "Meu primeiro contato com a Taqtile :)",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "ts-node src/index.ts"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/indigotech/onboard-gabriel-minossi.git"
-  },
-  "keywords": [],
-  "author": "Gabriel Minossi",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/indigotech/onboard-gabriel-minossi/issues"
-  },
-  "homepage": "https://github.com/indigotech/onboard-gabriel-minossi#readme",
-  "dependencies": {
-    "graphql-yoga": "1.18.3",
-    "ts-node": "9.0.0",
-    "typescript": "4.0.2"
-  }
+   "name": "onboard-gabriel-minossi",
+   "version": "1.0.0",
+   "description": "Meu primeiro contato com a Taqtile :)",
+   "main": "index.js",
+   "scripts": {
+      "test": "echo \"Error: no test specified\" && exit 1",
+      "start": "ts-node src/index.ts"
+   },
+   "repository": {
+      "type": "git",
+      "url": "git+https://github.com/indigotech/onboard-gabriel-minossi.git"
+   },
+   "keywords": [],
+   "author": "Gabriel Minossi",
+   "license": "ISC",
+   "bugs": {
+      "url": "https://github.com/indigotech/onboard-gabriel-minossi/issues"
+   },
+   "homepage": "https://github.com/indigotech/onboard-gabriel-minossi#readme",
+   "devDependencies": {
+      "@types/node": "8.0.29",
+      "ts-node": "3.3.0",
+      "typescript": "3.3.3333"
+   },
+   "dependencies": {
+      "graphql-yoga": "1.18.3",
+      "mysql": "2.14.1",
+      "pg": "7.3.0",
+      "reflect-metadata": "0.1.10",
+      "typeorm": "0.2.25"
+   }
 }
