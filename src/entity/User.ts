@@ -12,9 +12,12 @@ export class User {
     @Column()
     email: string;
 
-    @Column
-    birthDate: Date;
+    @Column()
+    password: string;
 
-    @Column
+    @Column()
+    birthDate: string;
+
+    @Column()
     cpf: number;
 }

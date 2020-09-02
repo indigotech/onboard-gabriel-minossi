@@ -1,20 +1,25 @@
 import "reflect-metadata";
-// import { createConnection } from "typeorm";
-// import { User } from "./entity/User";
+import { createConnection, Repository, getRepository } from "typeorm";
+import { User } from "./entity/User";
 import { GraphQLServer } from "graphql-yoga"
 
 //Mocked data
-const user = {
-    "id": "12",
+const user: User = {
+    "id": 12,
     "name": "User Name",
     "email": "User e-mail",
     "birthDate": "04-25-1990",
-    "cpf": "01234567890",
+    "cpf": 1234567890,
+    password: 'chumbada'
 };
 
 const typeDefs = `
 type Query {
-  login: Login!
+    info: String
+}
+
+type Mutation {
+  login(email: String!, password: String!): Login
 }
 
 type User {
@@ -27,13 +32,27 @@ type User {
 
 type Login {
     user: User!
-    token: String
+    token: String!
 }
 `;
 
 const resolvers = {
     Mutation: {
-        login: () => ({ user, token: 'the_token', })
+        login: async (_: any, { email, password }) => {
+            try {
+                const userRepository: Repository<User> = getRepository(User);
+
+                console.log("Searching for user on the database...");
+                const user: User = await userRepository.findOneOrFail({
+                    //select: ["id", "name", "email", "birthDate", "cpf"],
+                    where: { email, password }
+                });
+                user && console.log("Found user with id: " + user.id);
+                return ({ user, token: 'the_token', })
+            } catch (error) {
+                console.log('\nNo user found. Check your credentials');
+            }
+        },
     },
 };
 
@@ -42,20 +61,6 @@ const server = new GraphQLServer({
     resolvers,
 });
 
-server.start(() => console.log(`Server is running on http://localhost:4000`));
-
-// createConnection().then(async connection => {
-
-//     console.log("Inserting a new user into the database...");
-//     const user = new User();
-//     user.firstName = "Timber";
-//     user.lastName = "Saw";
-//     user.age = 25;
-//     await connection.manager.save(user);
-//     console.log("Saved a new user with id: " + user.id);
-
-//     console.log("Loading users from the database...");
-//     const users = await connection.manager.find(User);
-//     console.log("Loaded users: ", users);
-
-// }).catch(error => console.log(error));
+createConnection().then(async connection => {
+    server.start(() => console.log(`Server is running on http://localhost:4000`));
+}).catch(error => console.log('Error connecting to databse: ' + error));
