@@ -2,16 +2,19 @@ import "reflect-metadata";
 import { createConnection, Repository, getRepository } from "typeorm";
 import { User } from "./entity/User";
 import { GraphQLServer } from "graphql-yoga"
+import * as jwt from 'jsonwebtoken'
+
+const JWT_SECRET = "SICRET"
 
 //Mocked data
-const user: User = {
-    "id": 12,
-    "name": "User Name",
-    "email": "User e-mail",
-    "birthDate": "04-25-1990",
-    "cpf": 1234567890,
-    password: 'chumbada'
-};
+// const user: User = {
+//     "id": 12,
+//     "name": "User Name",
+//     "email": "User e-mail",
+//     "birthDate": "04-25-1990",
+//     "cpf": 1234567890,
+//     password: 'chumbada'
+// };
 
 const typeDefs = `
 type Query {
@@ -36,21 +39,45 @@ type Login {
 }
 `;
 
+// Simply take an auth header and returns the user.
+const getUser = async auth => {
+    if (!auth) throw new jwt.JsonWebTokenError('you must be logged in!');
+
+    const token = auth.split('Bearer ')[1];
+    if (!token) throw new jwt.JsonWebTokenError('you should provide a token!');
+
+    const user = jwt.verify(token, JWT_SECRET, (err, decoded) => {
+        if (err) throw new jwt.JsonWebTokenError('invalid token!');
+        return decoded;
+    });
+    return user;
+};
+
+//     async deleteTodo(_, { todoId }, { auth }) {
+//         const user = await getUser(auth);
+
 const resolvers = {
     Mutation: {
         login: async (_: any, { email, password }) => {
-            try {
-                const userRepository: Repository<User> = getRepository(User);
+            const userRepository: Repository<User> = getRepository(User);
 
-                console.log("Searching for user on the database...");
-                const user: User = await userRepository.findOneOrFail({
-                    //select: ["id", "name", "email", "birthDate", "cpf"],
-                    where: { email, password }
-                });
-                user && console.log("Found user with id: " + user.id);
-                return ({ user, token: 'the_token', })
-            } catch (error) {
-                console.log('\nNo user found. Check your credentials');
+            let user: User;
+            console.log("Searching for user on the database...");
+            try {
+                user = await userRepository.findOneOrFail({ where: { email } });
+            } catch {
+                console.log('Invalid credentials');
+                throw new Error('Invalid Credentials')
+            }
+            if (password !== user.password) {
+                throw new Error('Invalid Credentials')
+            } else {
+                const token = jwt.sign(
+                    { id: user.id, email: user.email },
+                    JWT_SECRET,
+                    { expiresIn: "1h" }
+                );
+                return ({ user, token, })
             }
         },
     },
