@@ -19,8 +19,8 @@
   },
   "homepage": "https://github.com/indigotech/onboard-gabriel-minossi#readme",
   "dependencies": {
-    "graphql-yoga": "^1.18.3",
-    "ts-node": "^9.0.0",
-    "typescript": "^4.0.2"
+    "graphql-yoga": "1.18.3",
+    "ts-node": "9.0.0",
+    "typescript": "4.0.2"
   }
 }
