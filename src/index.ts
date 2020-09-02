@@ -22,7 +22,7 @@ type Query {
 }
 
 type Mutation {
-  login(email: String!, password: String!): Login
+  login(email: String!, password: String!, rememberMe: Boolean): Login
 }
 
 type User {
@@ -58,7 +58,7 @@ const getUser = async auth => {
 
 const resolvers = {
     Mutation: {
-        login: async (_: any, { email, password }) => {
+        login: async (_: any, { email, password, rememberMe }) => {
             const userRepository: Repository<User> = getRepository(User);
 
             let user: User;
@@ -75,7 +75,7 @@ const resolvers = {
                 const token = jwt.sign(
                     { id: user.id, email: user.email },
                     JWT_SECRET,
-                    { expiresIn: "1h" }
+                    { expiresIn: rememberMe? "1w" : "1h" }
                 );
                 return ({ user, token, })
             }
