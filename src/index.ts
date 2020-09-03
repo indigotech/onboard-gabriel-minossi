@@ -8,17 +8,26 @@ const JWT_SECRET = "SICRET"
 
 const typeDefs = `
 type Query {
-    info: String
+    hello: String
 }
 
 type Mutation {
-  login(email: String!, password: String!, rememberMe: Boolean): Login
+    login(email: String!, password: String!, rememberMe: Boolean): Login
+    createUser(user: UserInput!): User!
 }
 
 type User {
     id: ID!
     name: String!
-    email: String
+    email: String!
+    birthDate: String!
+    cpf: Int!
+}
+
+input UserInput {
+    name: String!
+    email: String!
+    password: String!
     birthDate: String!
     cpf: Int!
 }
@@ -50,6 +59,9 @@ const getUser = async auth => {
 };
 
 const resolvers = {
+    Query: {
+        hello: () => 'Hello!'
+    },
     Mutation: {
         login: async (_: any, { email, password, rememberMe }) => {
             const userRepository: Repository<User> = getRepository(User);
@@ -59,7 +71,6 @@ const resolvers = {
             try {
                 user = await userRepository.findOneOrFail({ where: { email } });
             } catch {
-                console.log('Invalid credentials');
                 throw new Error('Invalid Credentials')
             }
             if (password !== user.password) {
@@ -73,14 +84,28 @@ const resolvers = {
                 return ({ user, token, })
             }
         },
+
+        createUser: (_, { user }) => {
+            const userRepository = getRepository(User);
+            user = {
+                name: user.name,
+                email: user.email.toLowerCase(),
+                password: user.password,
+                birthDate: user.birthDate,
+                cpf: user.cpf,
+            }
+            return userRepository.save(user);
+        }
     },
 };
 
-const server = new GraphQLServer({
+export const server = new GraphQLServer({
     typeDefs,
     resolvers,
 });
 
-createConnection().then(() => {
+createConnection('default').then(() => {
     server.start(() => console.log(`Server is running on http://localhost:4000`));
-}).catch(error => console.log('Error connecting to databse: ' + error));
+}).catch(() => {
+    error => console.error('Error connecting to databse: ' + error);
+});
