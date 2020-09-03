@@ -4,6 +4,9 @@ import * as supertest from 'supertest';
 import { createConnection, getRepository } from "typeorm";
 import { User } from "../src/entity/User";
 import { server } from '../src/index';
+import { verify as verifyToken, JsonWebTokenError } from 'jsonwebtoken';
+
+const JWT_SECRET = "SICRET"
 
 const url = 'http://localhost:4001';
 
@@ -49,15 +52,24 @@ describe('GraphQL', () => {
       userRepository.delete(user);
     })
 
-    it(`Successfully returns token for user with correct credentials`, (done) => {
+    it(`Successfully returns a valid token for user with correct credentials`, (done) => {
       request.post('/')
         .send({
-          query: `mutation { login(email: "${testUser.email}", password: "${testUser.password}") { token } }`
+          query: `mutation { login(email: "${testUser.email}", password: "${testUser.password}") { token user { id } } }`
         })
         .expect(200)
         .end((err, res) => {
           if (err) return done(err);
-          assert(res.body.data.login.token, 'Token expected');
+          const token = res.body.data.login.token
+          assert(token, 'Missing token');
+          let verification
+          verifyToken(token, JWT_SECRET, (err, decoded) => {
+            if (err) {
+              done(err);
+            }
+            verification = decoded;
+          });
+          assert.equal(verification.id, res.body.data.login.user.id, 'Token does not match user information');
           done();
         })
     });

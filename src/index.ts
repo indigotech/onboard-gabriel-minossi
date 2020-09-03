@@ -39,7 +39,7 @@ type Login {
 `;
 
 // Simply take an auth header and returns the user.
-const getUser = async auth => {
+const getVerification = async auth => {
     if (!auth) { 
         throw new jwt.JsonWebTokenError('you must be logged in!'); 
     }
@@ -49,13 +49,13 @@ const getUser = async auth => {
         throw new jwt.JsonWebTokenError('you should provide a token!'); 
     }
 
-    const user = jwt.verify(token, JWT_SECRET, (err, decoded) => {
+    const verification = jwt.verify(token, JWT_SECRET, (err, decoded) => {
         if (err) { 
             throw new jwt.JsonWebTokenError('invalid token!'); 
         }
         return decoded;
     });
-    return user;
+    return verification;
 };
 
 const resolvers = {
