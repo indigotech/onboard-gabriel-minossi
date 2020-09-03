@@ -6,16 +6,6 @@ import * as jwt from 'jsonwebtoken'
 
 const JWT_SECRET = "SICRET"
 
-//Mocked data
-// const user: User = {
-//     "id": 12,
-//     "name": "User Name",
-//     "email": "User e-mail",
-//     "birthDate": "04-25-1990",
-//     "cpf": 1234567890,
-//     password: 'chumbada'
-// };
-
 const typeDefs = `
 type Query {
     info: String
@@ -41,20 +31,23 @@ type Login {
 
 // Simply take an auth header and returns the user.
 const getUser = async auth => {
-    if (!auth) throw new jwt.JsonWebTokenError('you must be logged in!');
+    if (!auth) { 
+        throw new jwt.JsonWebTokenError('you must be logged in!'); 
+    }
 
     const token = auth.split('Bearer ')[1];
-    if (!token) throw new jwt.JsonWebTokenError('you should provide a token!');
+    if (!token) { 
+        throw new jwt.JsonWebTokenError('you should provide a token!'); 
+    }
 
     const user = jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) throw new jwt.JsonWebTokenError('invalid token!');
+        if (err) { 
+            throw new jwt.JsonWebTokenError('invalid token!'); 
+        }
         return decoded;
     });
     return user;
 };
-
-//     async deleteTodo(_, { todoId }, { auth }) {
-//         const user = await getUser(auth);
 
 const resolvers = {
     Mutation: {
@@ -73,9 +66,9 @@ const resolvers = {
                 throw new Error('Invalid Credentials')
             } else {
                 const token = jwt.sign(
-                    { id: user.id, email: user.email },
+                    { id: user.id },
                     JWT_SECRET,
-                    { expiresIn: rememberMe? "1w" : "1h" }
+                    { expiresIn: rememberMe ? "1w" : "1h" }
                 );
                 return ({ user, token, })
             }
@@ -88,6 +81,6 @@ const server = new GraphQLServer({
     resolvers,
 });
 
-createConnection().then(async connection => {
+createConnection().then(() => {
     server.start(() => console.log(`Server is running on http://localhost:4000`));
 }).catch(error => console.log('Error connecting to databse: ' + error));
