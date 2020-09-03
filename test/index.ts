@@ -4,7 +4,6 @@ import * as supertest from 'supertest';
 import { createConnection, getRepository } from "typeorm";
 import { User } from "../src/entity/User";
 import { server } from '../src/index';
-import { toUnicode } from 'punycode';
 
 const url = 'http://localhost:4001';
 
@@ -59,6 +58,31 @@ describe('GraphQL', () => {
         .end((err, res) => {
           if (err) return done(err);
           assert(res.body.data.login.token, 'Token expected');
+          done();
+        })
+    });
+
+    it(`Successfully returns the right user for the correct credentials`, (done) => {
+      request.post('/')
+        .send({
+          query: `mutation { login(email: "${testUser.email}", password: "${testUser.password}") { 
+            user { 
+              id
+              name
+              email
+              birthDate
+              cpf
+            } 
+          } }`
+        })
+        .expect(200)
+        .end((err, res) => {
+          if (err) return done(err);
+          const returnedUser = res.body.data.login.user;
+          assert.equal(returnedUser.name, testUser.name, 'Wrong name return from database');
+          assert.equal(returnedUser.email, testUser.email, 'Wrong email return from database');
+          assert.equal(returnedUser.birthDate, testUser.birthDate, 'Wrong birthDate return from database');
+          assert.equal(returnedUser.cpf, testUser.cpf, 'Wrong cpf return from database');
           done();
         })
     });
