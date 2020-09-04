@@ -5,7 +5,10 @@ import * as supertest from 'supertest';
 import { createConnection, Repository, createConnections, getConnection, getRepository } from "typeorm";
 import { User } from "../src/entity/User";
 import { graphQLServer } from '../src/graphQLSetup';
+import * as dotenv from 'dotenv';
 
+
+dotenv.config({ path: process.cwd() + '/.env.test' })
 
 describe('GraphQL', () => {
 
@@ -36,7 +39,7 @@ describe('GraphQL', () => {
     before((done) => {
       request = supertest(process.env.URL);
       userRepository = getRepository(User, 'test');
-      
+
       userRepository.save(testUser);
       done();
     });
