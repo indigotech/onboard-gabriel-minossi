@@ -12,17 +12,17 @@ dotenv.config({ path: process.cwd() + '/.env.test' })
 
 describe('GraphQL', () => {
 
-  before((done) => {
-    createConnections();
-    // createConnection('test')
-    graphQLServer.start({ port: process.env.PORT });
+  before(async () => {
+    await Promise.all([
+      createConnections(),
+      // createConnection('test'),
+      graphQLServer.start({ port: process.env.PORT })]
+    );
     console.log(`Server is running on ${process.env.URL}`);
-    done();
   });
 
-  after((done) => {
-    getConnection('test').close()
-    done();
+  after(async () => {
+    await getConnection('test').close()
   });
 
   describe('Login', () => {
@@ -46,14 +46,12 @@ describe('GraphQL', () => {
       done();
     });
 
-    beforeEach((done) => {
-      userRepository.save(testUser);
-      done();
+    beforeEach(async () => {
+      await userRepository.save(testUser);
     });
 
-    afterEach((done) => {
-      userRepository.delete({});
-      done();
+    afterEach(async () => {
+      await userRepository.delete({});
     });
 
 
