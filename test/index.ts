@@ -12,14 +12,18 @@ dotenv.config({ path: process.cwd() + '/.env.test' })
 
 describe('GraphQL', () => {
 
-  before(async () => {
-    await createConnections();
-    // await createConnection('test')
-    await graphQLServer.start({ port: process.env.PORT });
+  before((done) => {
+    createConnections();
+    // createConnection('test')
+    graphQLServer.start({ port: process.env.PORT });
     console.log(`Server is running on ${process.env.URL}`);
+    done();
   });
 
-  after(() => getConnection('test').close());
+  after((done) => {
+    getConnection('test').close()
+    done();
+  });
 
   describe('Login', () => {
     let request: supertest.SuperTest<supertest.Test>;
@@ -39,14 +43,19 @@ describe('GraphQL', () => {
     before((done) => {
       request = supertest(process.env.URL);
       userRepository = getRepository(User, 'test');
+      done();
+    });
 
+    beforeEach((done) => {
       userRepository.save(testUser);
       done();
     });
 
-    after(async () => {
-      await userRepository.delete({});
+    afterEach((done) => {
+      userRepository.delete({});
+      done();
     });
+
 
     it(`Successfully returns a valid token for user with correct credentials`, (done) => {
       request.post('/')
