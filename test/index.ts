@@ -12,7 +12,8 @@ describe('GraphQL', () => {
   before(async () => {
     await createConnections();
     // await createConnection('test')
-    await graphQLServer.start({ port: process.env.PORT }, () => console.log(`Server is running on ${process.env.URL}`));
+    await graphQLServer.start({ port: process.env.PORT });
+    console.log(`Server is running on ${process.env.URL}`);
   });
 
   after(() => getConnection('test').close());
@@ -32,25 +33,16 @@ describe('GraphQL', () => {
       password: testUser.password.split("").reverse().join("")
     };
 
-    before(() => {
+    before((done) => {
       request = supertest(process.env.URL);
       userRepository = getRepository(User, 'test');
       
       userRepository.save(testUser);
+      done();
     });
 
     after(async () => {
-      const users = await userRepository.find({
-        where: {
-          name: testUser.name,
-          email: testUser.email,
-          password: testUser.password,
-          birthDate: testUser.birthDate,
-          cpf: testUser.cpf
-        }
-      });
-      const user = users[users.length - 1];
-      userRepository.delete(user);
+      await userRepository.delete({});
     });
 
     it(`Successfully returns a valid token for user with correct credentials`, (done) => {
