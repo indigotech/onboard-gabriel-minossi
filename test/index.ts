@@ -1,22 +1,29 @@
-import * as assert from 'assert';
+import { expect } from 'chai';
+import * as dotenv from 'dotenv';
 import { verify as verifyToken } from 'jsonwebtoken';
 import 'reflect-metadata';
 import * as supertest from 'supertest';
-import { createConnection, Repository, createConnections, getConnection, getRepository } from "typeorm";
+import { createConnection, createConnections, getConnection, getRepository, Repository } from "typeorm";
 import { User } from "../src/entity/User";
 import { graphQLServer } from '../src/graphQLSetup';
 
 
+dotenv.config({ path: process.cwd() + '/.env.test' })
+
 describe('GraphQL', () => {
 
   before(async () => {
-    await createConnections();
-    // await createConnection('test')
-    await graphQLServer.start({ port: process.env.PORT });
+    await Promise.all([
+      createConnections(),
+      // createConnection('test'),
+      graphQLServer.start({ port: process.env.PORT })]
+    );
     console.log(`Server is running on ${process.env.URL}`);
   });
 
-  after(() => getConnection('test').close());
+  after(async () => {
+    await getConnection('test').close()
+  });
 
   describe('Login', () => {
     let request: supertest.SuperTest<supertest.Test>;
@@ -36,14 +43,17 @@ describe('GraphQL', () => {
     before((done) => {
       request = supertest(process.env.URL);
       userRepository = getRepository(User, 'test');
-      
-      userRepository.save(testUser);
       done();
     });
 
-    after(async () => {
+    beforeEach(async () => {
+      await userRepository.save(testUser);
+    });
+
+    afterEach(async () => {
       await userRepository.delete({});
     });
+
 
     it(`Successfully returns a valid token for user with correct credentials`, (done) => {
       request.post('/')
@@ -54,7 +64,7 @@ describe('GraphQL', () => {
         .end((err, res) => {
           if (err) return done(err);
           const token = res.body.data.login.token
-          assert(token, 'Missing token');
+          expect(token, 'Missing token').to.exist;
           let verification
           verifyToken(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
@@ -62,7 +72,7 @@ describe('GraphQL', () => {
             }
             verification = decoded;
           });
-          assert.equal(verification.id, res.body.data.login.user.id, 'Token does not match user information');
+          expect(verification.id.toString(), 'Token does not match user information').to.equal(res.body.data.login.user.id);
           done();
         });
     });
@@ -84,10 +94,10 @@ describe('GraphQL', () => {
         .end((err, res) => {
           if (err) return done(err);
           const returnedUser = res.body.data.login.user;
-          assert.equal(returnedUser.name, testUser.name, 'Wrong name return from database');
-          assert.equal(returnedUser.email, testUser.email, 'Wrong email return from database');
-          assert.equal(returnedUser.birthDate, testUser.birthDate, 'Wrong birthDate return from database');
-          assert.equal(returnedUser.cpf, testUser.cpf, 'Wrong cpf return from database');
+          expect(returnedUser.name, 'Wrong name return from database').to.be.equal(testUser.name);
+          expect(returnedUser.email, 'Wrong email return from database').to.be.equal(testUser.email);
+          expect(returnedUser.birthDate, 'Wrong birthDate return from database').to.be.equal(testUser.birthDate);
+          expect(returnedUser.cpf, 'Wrong cpf return from database').to.be.equal(testUser.cpf);
           done();
         });
     });
@@ -100,7 +110,7 @@ describe('GraphQL', () => {
         .expect(200)
         .end((err, res) => {
           if (err) return err;
-          assert(res.body.errors, 'Error expected');
+          expect(res.body, 'Error expected').to.have.property('errors');
           done();
         });
     });
@@ -113,7 +123,7 @@ describe('GraphQL', () => {
         .expect(200)
         .end((err, res) => {
           if (err) return err;
-          assert(res.body.errors, 'Error expected');
+          expect(res.body, 'Error expected').to.have.property('errors');
           done();
         });
     });

@@ -35,7 +35,7 @@ type Login {
 }
 `;
 
-const getVerification = async auth => {
+const getVerification = async (auth) => {
     if (!auth) {
         throw new jwt.JsonWebTokenError('you must be logged in!');
     }
