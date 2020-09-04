@@ -45,7 +45,7 @@ const getVerification = (context) => {
     const token = auth.replace('Bearer ', '');
 
     const verification = jwt.verify(token, process.env.JWT_SECRET);
-   return verification;
+    return verification;
 };
 
 
@@ -83,10 +83,22 @@ const resolvers = {
             }
         },
 
-        createUser: (_, { user }, context) => {
-
+        createUser: async (_, { user }, context) => {
             getVerification(context)
+
+            const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
+
+            if (isWeak(user.password)) {
+                throw new Error('Password must be at least 7 characters long \
+                and must contain at last one letter and one digit')
+            }
+
             const userRepository = getRepository(User);
+
+            if (await userRepository.findOne({ where: { email: user.email } })) {
+                throw new Error('Email already in use');
+            }
+
             user = {
                 name: user.name,
                 email: user.email.toLowerCase(),
