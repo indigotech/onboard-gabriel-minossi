@@ -1,8 +1,9 @@
-import { GraphQLServer } from "graphql-yoga";
-import * as jwt from 'jsonwebtoken';
-import { getRepository, Repository } from "typeorm";
+import * as bcrypt from 'bcrypt';
 import { formatError } from "error";
+import { GraphQLServer } from 'graphql-yoga';
+import * as jwt from 'jsonwebtoken';
 import { User } from "src/entity/User";
+import { getRepository, Repository } from "typeorm";
 
 const typeDefs = `
 type Query {
@@ -52,7 +53,7 @@ const getVerification = (context) => {
 const verifyEmail = (email: string): void => {
     if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
         throw formatError(400, 'Invalid email');
-    } 
+    }
 }
 
 const resolvers = {
@@ -71,7 +72,7 @@ const resolvers = {
             } catch {
                 throw formatError(401, 'Invalid Credentials');
             }
-            if (password !== user.password) {
+            if (bcrypt.compareSync(user.password, password)) {
                 throw formatError(401, 'Invalid Credentials');
             } else {
                 const token = jwt.sign(
@@ -99,10 +100,11 @@ const resolvers = {
                 throw new Error('Email already in use');
             }
 
+            const salt = bcrypt.genSaltSync(6)
             user = {
                 name: user.name,
                 email: user.email.toLowerCase(),
-                password: user.password,
+                password: bcrypt.hashSync(user.password, salt),
                 birthDate: user.birthDate,
                 cpf: user.cpf,
             }

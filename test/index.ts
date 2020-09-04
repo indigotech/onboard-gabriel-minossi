@@ -1,12 +1,12 @@
 import { expect } from 'chai';
 import * as dotenv from 'dotenv';
+import { formatError } from 'error';
 import { verify as verifyToken } from 'jsonwebtoken';
 import 'reflect-metadata';
-import * as supertest from 'supertest';
-import { createConnection, createConnections, getConnection, getRepository, Repository } from "typeorm";
-import { formatError } from '../error';
 import { User } from "src/entity/User";
 import { graphQLServer } from 'src/graphql-setup';
+import * as supertest from 'supertest';
+import { createConnections, getConnection, getRepository, Repository } from "typeorm";
 
 
 dotenv.config({ path: process.cwd() + '/.env.test' })
