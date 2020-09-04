@@ -6,16 +6,13 @@ import { createConnection, Repository, createConnections, getConnection, getRepo
 import { User } from "../src/entity/User";
 import { graphQLServer } from '../src/graphQLSetup';
 
-const JWT_SECRET = "SICRET";
-const port = 4001;
-const url = 'http://localhost:' + port;
 
 describe('GraphQL', () => {
 
   before(async () => {
     await createConnections();
     // await createConnection('test')
-    await graphQLServer.start({ port }, () => console.log(`Server is running on http://localhost:` + port));
+    await graphQLServer.start({ port: process.env.PORT }, () => console.log(`Server is running on ${process.env.URL}`));
   });
 
   after(() => getConnection('test').close());
@@ -36,7 +33,7 @@ describe('GraphQL', () => {
     };
 
     before(() => {
-      request = supertest(url);
+      request = supertest(process.env.URL);
       userRepository = getRepository(User, 'test');
       
       userRepository.save(testUser);
@@ -67,7 +64,7 @@ describe('GraphQL', () => {
           const token = res.body.data.login.token
           assert(token, 'Missing token');
           let verification
-          verifyToken(token, JWT_SECRET, (err, decoded) => {
+          verifyToken(token, process.env.JWT_SECRET, (err, decoded) => {
             if (err) {
               done(err);
             }

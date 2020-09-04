@@ -3,8 +3,6 @@ import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from "typeorm";
 import { User } from "./entity/User";
 
-const JWT_SECRET = "SICRET"
-
 const typeDefs = `
 type Query {
     hello: String
@@ -38,18 +36,18 @@ type Login {
 `;
 
 const getVerification = async auth => {
-    if (!auth) { 
-        throw new jwt.JsonWebTokenError('you must be logged in!'); 
+    if (!auth) {
+        throw new jwt.JsonWebTokenError('you must be logged in!');
     }
 
     const token = auth.split('Bearer ')[1];
-    if (!token) { 
-        throw new jwt.JsonWebTokenError('you should provide a token!'); 
+    if (!token) {
+        throw new jwt.JsonWebTokenError('you should provide a token!');
     }
 
-    const verification = jwt.verify(token, JWT_SECRET, (err, decoded) => {
-        if (err) { 
-            throw new jwt.JsonWebTokenError('invalid token!'); 
+    const verification = jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
+        if (err) {
+            throw new jwt.JsonWebTokenError('invalid token!');
         }
         return decoded;
     });
@@ -76,7 +74,7 @@ const resolvers = {
             } else {
                 const token = jwt.sign(
                     { id: user.id },
-                    JWT_SECRET,
+                    process.env.JWT_SECRET,
                     { expiresIn: rememberMe ? "1w" : "1h" }
                 );
                 return ({ user, token, })
