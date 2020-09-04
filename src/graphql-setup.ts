@@ -36,23 +36,16 @@ type Login {
 }
 `;
 
-const getVerification = async (auth) => {
+const getVerification = (context) => {
+    const auth = context.request.get('Authorization')
     if (!auth) {
-        throw new jwt.JsonWebTokenError('you must be logged in!');
+        throw new jwt.JsonWebTokenError('You must be logged in!');
     }
 
-    const token = auth.split('Bearer ')[1];
-    if (!token) {
-        throw new jwt.JsonWebTokenError('you should provide a token!');
-    }
+    const token = auth.replace('Bearer ', '');
 
-    const verification = jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            throw new jwt.JsonWebTokenError('invalid token!');
-        }
-        return decoded;
-    });
-    return verification;
+    const verification = jwt.verify(token, process.env.JWT_SECRET);
+   return verification;
 };
 
 
@@ -67,12 +60,12 @@ const resolvers = {
         hello: () => 'Hello!'
     },
     Mutation: {
-        login: async (_: any, { email, password, rememberMe }) => {
+        login: async (_, { email, password, rememberMe }) => {
+
             const userRepository: Repository<User> = getRepository(User);
 
             verifyEmail(email);
             let user: User;
-            console.log("Searching for user on the database...");
             try {
                 user = await userRepository.findOneOrFail({ where: { email } });
             } catch {
@@ -90,7 +83,9 @@ const resolvers = {
             }
         },
 
-        createUser: (_, { user }) => {
+        createUser: (_, { user }, context) => {
+
+            getVerification(context)
             const userRepository = getRepository(User);
             user = {
                 name: user.name,
@@ -107,4 +102,5 @@ const resolvers = {
 export const graphQLServer = new GraphQLServer({
     typeDefs,
     resolvers,
+    context: request => request
 });
