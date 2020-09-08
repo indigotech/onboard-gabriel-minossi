@@ -44,9 +44,7 @@ const getVerification = (context: Context) => {
         throw new jwt.JsonWebTokenError('You must be logged in!');
     }
 
-    const token = auth.replace('Bearer ', '');
-    console.log(auth);
-    
+    const token = auth.replace('Bearer ', '');    
 
     const verification = jwt.verify(token, process.env.JWT_SECRET);
     return verification;
@@ -100,15 +98,14 @@ const resolvers = {
                 throw formatError(400, 'Email already in use');
             }
 
-            const salt = bcrypt.genSaltSync(6)
-            user = {
+            const newUser = {
                 name: user.name,
                 email: user.email.toLowerCase(),
-                password: bcrypt.hashSync(user.password, salt),
+                password: bcrypt.hashSync(user.password, bcrypt.genSaltSync(6)),
                 birthDate: user.birthDate,
                 cpf: user.cpf,
             }
-            return userRepository.save(user);
+            return userRepository.save(newUser);
         }
     },
 };

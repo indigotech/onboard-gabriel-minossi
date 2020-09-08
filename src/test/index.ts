@@ -14,12 +14,14 @@ import { createConnection, getConnection, getRepository, Repository } from "type
 dotenv.config({ path: process.cwd() + '/.env.test' })
 
 describe('GraphQL', () => {
+  let request: supertest.SuperTest<supertest.Test>;
 
   before(async () => {
     try {
       await createConnection('test');
       await graphQLServer.start({ port: process.env.PORT });
       console.log(`Server is running on ${process.env.URL}`);
+      request = supertest(process.env.URL);
     } catch (error) {
       throw formatError(503, 'Are you sure the Docker database container is up?', error)
     }
@@ -29,13 +31,20 @@ describe('GraphQL', () => {
     await getConnection('test').close()
   });
 
-  describe('Login', () => {
-    type LoginInput = {
-      email: string
-      password: string
-    };
+  type LoginInput = {
+    email: string
+    password: string
+  };
 
-    let request: supertest.SuperTest<supertest.Test>;
+  const login = (credentials: LoginInput) => {
+    return request.post('/')
+      .send({
+        query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
+        variables: { email: credentials.email, password: credentials.password }
+      });
+  };
+
+  describe('Login', () => {
     let userRepository: Repository<User>;
     const unencryptedPassword = "Supersafe";
     const testUser = {
@@ -54,18 +63,9 @@ describe('GraphQL', () => {
       password: unencryptedPassword.split("").reverse().join("")
     };
 
-    const login = (credentials: LoginInput) => {
-      return request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
-          variables: { email: credentials.email, password: credentials.password }
-        });
-    }
 
-    before((done) => {
-      request = supertest(process.env.URL);
+    before(() => {
       userRepository = getRepository(User, 'test');
-      done();
     });
 
     beforeEach(async () => {
@@ -106,18 +106,29 @@ describe('GraphQL', () => {
     });
   });
 
-  describe('Create User', () => {
-    type UserInput = {
-      name: string
-      email: string
-      password: string
-      birthDate: string
-      cpf: number
-    };
+  type UserInput = {
+    name: string
+    email: string
+    password: string
+    birthDate: string
+    cpf: number
+  };
 
-    let request: supertest.SuperTest<supertest.Test>;
+  const createUser = (user: UserInput, token: string) => {
+    const newUser = {...user};
+
+    return request.post('/')
+      .auth(token, { type: 'bearer' })
+      .send({
+        query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
+        variables: { user: newUser }
+      });
+  };
+
+  describe('Create User', () => {
     let userRepository: Repository<User>;
-    const unencryptedPassword = "supersafe";
+    let token: string;
+    const unencryptedPassword = "Supersafe";
     const existingUser: UserInput = {
       name: "existing",
       email: "existing-email@example.com",
@@ -128,26 +139,13 @@ describe('GraphQL', () => {
     const newUser: UserInput = {
       name: "new",
       email: "new-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: unencryptedPassword,
       birthDate: "01-01-1970",
       cpf: 28
     };
-    let token: string;
 
-    const createUser = (user: UserInput) => {
-      return request.post('/')
-        .auth(token, { type: 'bearer' })
-        .send({
-          query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
-          variables: { user }
-        });
-    }
-
-    before((done) => {
-      request = supertest(process.env.URL);
+    before(() => {
       userRepository = getRepository(User, 'test');
-
-      done();
     });
 
     beforeEach(async () => {
@@ -167,12 +165,26 @@ describe('GraphQL', () => {
     it('Creates a new specified user for an user logged in correctly', async () => {
       const { password, ...expectedResponse } = { ...newUser };
 
-      const response = await createUser(newUser);
+      const response = await createUser(newUser, token);      
       expect(response.body.data.createUser).to.contain(expectedResponse);
     });
 
+    it('Logs in to an user account after creation', async () => {
+      const { password, ...expectedResponse } = { ...newUser };
+
+      const response = await createUser(newUser, token);
+      console.log(response.body);
+
+      console.log(await userRepository.find());
+      
+
+      const loginResponse = await login({ email: response.body.data.createUser.email, password: unencryptedPassword }); 
+      console.log(loginResponse.body);
+      expect(loginResponse.body.data.login.user).to.contain(expectedResponse);
+    });
+
     it('Fails to create a new user with an already registered email', async () => {
-      const response = await createUser(existingUser);
+      const response = await createUser(existingUser, token);
       expect(response.body).to.have.property('errors');
     });
 
@@ -180,7 +192,7 @@ describe('GraphQL', () => {
       const oldToken = token
       token = '';
 
-      const response = await createUser(newUser);
+      const response = await createUser(newUser, token);
       expect(response.body).to.have.property('errors');
 
       token = oldToken;
@@ -190,7 +202,7 @@ describe('GraphQL', () => {
       const invalidUser = { ...newUser };
       invalidUser.email = 'shortmail';
 
-      const response = await createUser(invalidUser);
+      const response = await createUser(invalidUser, token);
       expect(response.body).to.have.property('errors');
     });
 
@@ -198,7 +210,7 @@ describe('GraphQL', () => {
       const invalidUser = { ...newUser };
       invalidUser.password = 'shortpass';
 
-      const response = await createUser(invalidUser);
+      const response = await createUser(invalidUser, token);      
       expect(response.body).to.have.property('errors');
     });
 
@@ -207,7 +219,7 @@ describe('GraphQL', () => {
       const verifyEmptyField = async (field: keyof (User)) => {
         const invalidUser = { ...newUser };
         invalidUser[`${field}`] = undefined;
-        const response = await createUser(invalidUser);
+        const response = await createUser(invalidUser, token);
         expect(response.body, 'Error expected').to.have.property('errors');
       };
 
