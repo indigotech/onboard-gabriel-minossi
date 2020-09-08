@@ -1,9 +1,9 @@
 import * as bcrypt from 'bcrypt';
-import { formatError } from "error";
+import { User } from "@src/entity/User";
+import { formatError } from "@src/error";
 import { GraphQLServer } from 'graphql-yoga';
-import { ContextCallback } from 'graphql-yoga/dist/types';
+import { Context, ContextCallback } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
-import { User } from "src/entity/User";
 import { getRepository, Repository } from "typeorm";
 
 const typeDefs = `
@@ -38,24 +38,19 @@ type Login {
 }
 `;
 
-const getVerification = (context) => {
+const getVerification = (context: Context) => {
     const auth = context.request.get('Authorization')
     if (!auth) {
         throw new jwt.JsonWebTokenError('You must be logged in!');
     }
 
     const token = auth.replace('Bearer ', '');
+    console.log(auth);
+    
 
     const verification = jwt.verify(token, process.env.JWT_SECRET);
     return verification;
 };
-
-
-const verifyEmail = (email: string): void => {
-    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
-        throw formatError(400, 'Invalid email');
-    }
-}
 
 const resolvers = {
     Query: {
@@ -66,14 +61,13 @@ const resolvers = {
 
             const userRepository: Repository<User> = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
 
-            verifyEmail(email);
             let user: User;
             try {
                 user = await userRepository.findOneOrFail({ where: { email } });
             } catch {
                 throw formatError(401, 'Invalid Credentials');
             }
-            if (bcrypt.compareSync(user.password, password)) {
+            if (!bcrypt.compareSync(password, user.password)) {
                 throw formatError(401, 'Invalid Credentials');
             } else {
                 const token = jwt.sign(
@@ -81,7 +75,7 @@ const resolvers = {
                     process.env.JWT_SECRET,
                     { expiresIn: rememberMe ? "1w" : "1h" }
                 );
-                return ({ user, token, })
+                return ({ user, token })
             }
         },
 
@@ -92,18 +86,18 @@ const resolvers = {
             const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
 
             if (!isValid(user.email)) {
-                throw new Error('Invalid email. Must follow format email@example.com');
+                throw formatError(400, 'Invalid email');
             }
 
             if (isWeak(user.password)) {
-                throw new Error('Password must be at least 7 characters long' +
+                throw formatError(400, 'Password must be at least 7 characters long' +
                     'and must contain at last one letter and one digit')
             }
 
             const userRepository = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
 
             if (await userRepository.findOne({ where: { email: user.email } })) {
-                throw new Error('Email already in use');
+                throw formatError(400, 'Email already in use');
             }
 
             const salt = bcrypt.genSaltSync(6)

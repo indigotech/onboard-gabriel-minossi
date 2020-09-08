@@ -4,8 +4,8 @@
    "description": "Meu primeiro contato com a Taqtile :)",
    "main": "index.js",
    "scripts": {
-      "test": "TEST=true mocha -r ts-node/register test/index.ts --exit",
-      "start": "ts-node -r dotenv/config src/index.ts"
+      "test": "TEST=true mocha -r tsconfig-paths/register -r ts-node/register src/test/index.ts --exit",
+      "start": "ts-node -r tsconfig-paths/register -r dotenv/config src/index.ts"
    },
    "repository": {
       "type": "git",
@@ -38,6 +38,7 @@
       "jsonwebtoken": "8.5.1",
       "pg": "7.3.0",
       "reflect-metadata": "0.1.10",
+      "tsconfig-paths": "3.9.0",
       "typeorm": "0.2.25"
    }
 }

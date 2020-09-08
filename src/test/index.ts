@@ -1,12 +1,12 @@
 import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
 import * as dotenv from 'dotenv';
-import { formatError } from 'error';
+import { formatError } from '@src/error';
 import { verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
 import 'reflect-metadata';
-import { User } from "src/entity/User";
-import { graphQLServer } from 'src/graphql-setup';
+import { User } from "@src/entity/User";
+import { graphQLServer } from '@src/graphql-setup';
 import * as supertest from 'supertest';
 import { createConnection, getConnection, getRepository, Repository } from "typeorm";
 
@@ -37,7 +37,7 @@ describe('GraphQL', () => {
 
     let request: supertest.SuperTest<supertest.Test>;
     let userRepository: Repository<User>;
-    const unencryptedPassword = "supersafe";
+    const unencryptedPassword = "Supersafe";
     const testUser = {
       name: "test",
       email: "test-email@example.com",
@@ -69,7 +69,7 @@ describe('GraphQL', () => {
     });
 
     beforeEach(async () => {
-      await userRepository.save(testUser);
+      await userRepository.save({ ...testUser });
     });
 
     afterEach(async () => {
@@ -87,10 +87,9 @@ describe('GraphQL', () => {
 
     it(`Successfully returns the right user for the correct credentials`, async () => {
       const { password, ...expectedResponse } = { ...testUser }
-      expectedResponse['id'] = expectedResponse['id'].toString();
 
       const response = await login(correctCredentials);
-      expect(response.body.data.login.user).to.be.contain(expectedResponse);
+      expect(response.body.data.login.user).to.contain(expectedResponse);
     });
 
     it(`Fails logging in for an existent email with a wrong password`, async () => {
@@ -152,14 +151,13 @@ describe('GraphQL', () => {
     });
 
     beforeEach(async () => {
-      await userRepository.save(existingUser);
-      existingUser['id'] = undefined
+      await userRepository.save({ ...existingUser });
 
-      const response = await request.post('/')
+      token = (await request.post('/')
         .send({
-          query: `mutation { login(email: "${existingUser.email}", password: "${unencryptedPassword}") { token } }`
-        });
-      token = response.body.data.login.token;
+          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
+          variables: { email: existingUser.email, password: unencryptedPassword }
+        })).body.data.login.token
     });
 
     afterEach(async () => {
@@ -179,10 +177,13 @@ describe('GraphQL', () => {
     });
 
     it('Fails to create a new user if user is not logged in', async () => {
+      const oldToken = token
       token = '';
 
       const response = await createUser(newUser);
       expect(response.body).to.have.property('errors');
+
+      token = oldToken;
     });
 
     it('Fails to create a new user with an invalid email', async () => {
@@ -203,51 +204,31 @@ describe('GraphQL', () => {
 
     describe('Empty fields', () => {
 
-      const verifyEmptyField = (field: keyof (User), done: Function) => {
+      const verifyEmptyField = async (field: keyof (User)) => {
         const invalidUser = { ...newUser };
         invalidUser[`${field}`] = undefined;
-
-        request.post('/')
-          .send({
-            query: `mutation { createUser (user: $user) { 
-            user { 
-              id
-              name
-              email
-              birthDate
-              cpf
-            } 
-          } }`,
-            variables: {
-              user: invalidUser
-            }
-          })
-          .expect(400)
-          .end((err, res) => {
-            if (err) return done(err);
-            expect(res.body, 'Error expected').to.have.property('errors');
-            done();
-          });
+        const response = await createUser(invalidUser);
+        expect(response.body, 'Error expected').to.have.property('errors');
       };
 
-      it('Fails if name is empty', (done) => {
-        verifyEmptyField('name', done);
+      it('Fails if name is empty', () => {
+        verifyEmptyField('name');
       });
 
-      it('Fails if email is empty', (done) => {
-        verifyEmptyField('email', done);
+      it('Fails if email is empty', () => {
+        verifyEmptyField('email');
       });
 
-      it('Fails if password is empty', (done) => {
-        verifyEmptyField('password', done);
+      it('Fails if password is empty', () => {
+        verifyEmptyField('password');
       });
 
-      it('Fails if birthDate is empty', (done) => {
-        verifyEmptyField('birthDate', done);
+      it('Fails if birthDate is empty', () => {
+        verifyEmptyField('birthDate');
       });
 
-      it('Fails if cpf is empty', (done) => {
-        verifyEmptyField('cpf', done);
+      it('Fails if cpf is empty', () => {
+        verifyEmptyField('cpf');
       });
     });
   });
