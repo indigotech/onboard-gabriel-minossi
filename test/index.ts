@@ -5,8 +5,8 @@ import 'reflect-metadata';
 import * as supertest from 'supertest';
 import { createConnection, createConnections, getConnection, getRepository, Repository } from "typeorm";
 import { formatError } from '../error';
-import { User } from "../src/entity/User";
-import { graphQLServer } from '../src/graphQLSetup';
+import { User } from "src/entity/User";
+import { graphQLServer } from 'src/graphql-setup';
 
 
 dotenv.config({ path: process.cwd() + '/.env.test' })

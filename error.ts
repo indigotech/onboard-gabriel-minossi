@@ -1,10 +1,10 @@
-export interface httpError {
+export interface HttpError {
     code: number;
     message: string;
     additionalInfo?: string;
 }
 
-export class httpError extends Error implements httpError {
+export class HttpError extends Error implements HttpError {
     code: number;
     message: string;
     additionalInfo?: string
@@ -18,6 +18,6 @@ export class httpError extends Error implements httpError {
     }
 }
 
-export const formatError = (httpCode: number, message: string, error?: Error): httpError => {
-    return new httpError(httpCode, message, error);
+export const formatError = (httpCode: number, message: string, error?: Error): HttpError => {
+    return new HttpError(httpCode, message, error);
 }

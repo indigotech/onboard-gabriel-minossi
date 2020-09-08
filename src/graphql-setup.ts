@@ -1,8 +1,8 @@
 import { GraphQLServer } from "graphql-yoga";
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from "typeorm";
-import { User } from "./entity/User";
-import { formatError } from "../error";
+import { formatError } from "error";
+import { User } from "src/entity/User";
 
 const typeDefs = `
 type Query {
@@ -57,11 +57,9 @@ const getVerification = async (auth) => {
 
 
 const verifyEmail = (email: string): void => {
-    if (/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
-        return;
-    } else {
+    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
         throw formatError(400, 'Invalid email');
-    }
+    } 
 }
 
 const resolvers = {
