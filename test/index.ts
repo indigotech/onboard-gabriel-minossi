@@ -30,6 +30,11 @@ describe('GraphQL', () => {
   });
 
   describe('Login', () => {
+    type LoginInput = {
+      email: string
+      password: string
+    };
+
     let request: supertest.SuperTest<supertest.Test>;
     let userRepository: Repository<User>;
     const unencryptedPassword = "supersafe";
@@ -40,10 +45,22 @@ describe('GraphQL', () => {
       birthDate: "01-01-1970",
       cpf: 28
     };
+    const correctCredentials = {
+      email: testUser.email,
+      password: unencryptedPassword
+    };
     const wrongCredentials = {
       email: testUser.email.split("").reverse().join(""),
-      password: testUser.password.split("").reverse().join("")
+      password: unencryptedPassword.split("").reverse().join("")
     };
+
+    const login = (credentials: LoginInput) => {
+      return request.post('/')
+        .send({
+          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
+          variables: { email: credentials.email, password: credentials.password }
+        });
+    }
 
     before((done) => {
       request = supertest(process.env.URL);
@@ -60,89 +77,44 @@ describe('GraphQL', () => {
     });
 
 
-    it(`Successfully returns a valid token for user with correct credentials`, (done) => {
-      request.post('/')
-        .send({
-          query: `mutation { login(email: "${testUser.email}", password: "${unencryptedPassword}") { token user { id } } }`
-        })
-        .expect(200)
-        .end((err, res) => {
-          if (err) return done(err);
-          const token = res.body.data.login.token
-          expect(token, 'Missing token').to.exist;
-          let verification
-          verifyToken(token, process.env.JWT_SECRET, (err, decoded) => {
-            if (err) {
-              done(err);
-            }
-            verification = decoded;
-          });
-          expect(verification.id.toString(), 'Token does not match user information').to.equal(res.body.data.login.user.id);
-          done();
-        });
+    it(`Successfully returns a valid token for user with correct credentials`, async () => {
+      const response = await login(correctCredentials);
+      const token = response.body.data.login.token
+      expect(token, 'Missing token').to.exist;
+      const verification = verifyToken(token, process.env.JWT_SECRET)
+      expect(verification['id'].toString(), 'Token does not match user information').to.equal(response.body.data.login.user.id);
     });
 
-    it(`Successfully returns the right user for the correct credentials`, (done) => {
-      request.post('/')
-        .send({
-          query: `mutation { login(email: "${testUser.email}", password: "${unencryptedPassword}") { 
-            user { 
-              id
-              name
-              email
-              birthDate
-              cpf
-            } 
-          } }`
-        })
-        .expect(200)
-        .end((err, res) => {
-          if (err) return done(err);
-          const returnedUser = res.body.data.login.user;
-          expect(returnedUser.name, 'Wrong name return from database').to.be.equal(testUser.name);
-          expect(returnedUser.email, 'Wrong email return from database').to.be.equal(testUser.email);
-          expect(returnedUser.birthDate, 'Wrong birthDate return from database').to.be.equal(testUser.birthDate);
-          expect(returnedUser.cpf, 'Wrong cpf return from database').to.be.equal(testUser.cpf);
-          done();
-        });
+    it(`Successfully returns the right user for the correct credentials`, async () => {
+      const { password, ...expectedResponse } = { ...testUser }
+      expectedResponse['id'] = expectedResponse['id'].toString();
+
+      const response = await login(correctCredentials);
+      expect(response.body.data.login.user).to.be.contain(expectedResponse);
     });
 
-    it(`Fails logging in for an existent email with a wrong password`, (done) => {
-      request.post('/')
-        .send({
-          query: `mutation { login(email: "${testUser.email}", password: "${wrongCredentials.password}") { token } }`
-        })
-        .expect(200)
-        .end((err, res) => {
-          if (err) return err;
-          expect(res.body, 'Error expected').to.have.property('errors');
-          done();
-        });
+    it(`Fails logging in for an existent email with a wrong password`, async () => {
+      const credentials = { email: correctCredentials.email, password: wrongCredentials.password };
+
+      const response = await login(credentials);
+      expect(response.body, 'Error expected').to.have.property('errors');
     });
 
-    it(`Fails logging in for a non-valid email and an existent password`, (done) => {
-      request.post('/')
-        .send({
-          query: `mutation { login(email: "${wrongCredentials.email}", password: "${unencryptedPassword}") { token } }`
-        })
-        .expect(200)
-        .end((err, res) => {
-          if (err) return err;
-          expect(res.body, 'Error expected').to.have.property('errors');
-          done();
-        });
+    it(`Fails logging in for an unexistent email and an existent password`, async () => {
+      const credentials = { email: wrongCredentials.email, password: correctCredentials.password };
+      const response = await login(credentials);
+      expect(response.body, 'Error expected').to.have.property('errors');
     });
   });
 
   describe('Create User', () => {
-
     type UserInput = {
       name: string
       email: string
       password: string
       birthDate: string
       cpf: number
-    }
+    };
 
     let request: supertest.SuperTest<supertest.Test>;
     let userRepository: Repository<User>;
@@ -218,7 +190,6 @@ describe('GraphQL', () => {
       invalidUser.email = 'shortmail';
 
       const response = await createUser(invalidUser);
-      console.log(response.body);
       expect(response.body).to.have.property('errors');
     });
 
