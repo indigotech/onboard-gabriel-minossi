@@ -1,6 +1,7 @@
 import * as bcrypt from 'bcrypt';
 import { formatError } from "error";
 import { GraphQLServer } from 'graphql-yoga';
+import { ContextCallback } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { User } from "src/entity/User";
 import { getRepository, Repository } from "typeorm";
@@ -63,7 +64,7 @@ const resolvers = {
     Mutation: {
         login: async (_, { email, password, rememberMe }) => {
 
-            const userRepository: Repository<User> = getRepository(User);
+            const userRepository: Repository<User> = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
 
             verifyEmail(email);
             let user: User;
@@ -84,17 +85,22 @@ const resolvers = {
             }
         },
 
-        createUser: async (_, { user }, context) => {
+        createUser: async (_, { user }, context: ContextCallback) => {
             getVerification(context)
 
+            const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
             const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
 
-            if (isWeak(user.password)) {
-                throw new Error('Password must be at least 7 characters long \
-                and must contain at last one letter and one digit')
+            if (!isValid(user.email)) {
+                throw new Error('Invalid email. Must follow format email@example.com');
             }
 
-            const userRepository = getRepository(User);
+            if (isWeak(user.password)) {
+                throw new Error('Password must be at least 7 characters long' +
+                    'and must contain at last one letter and one digit')
+            }
+
+            const userRepository = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
 
             if (await userRepository.findOne({ where: { email: user.email } })) {
                 throw new Error('Email already in use');

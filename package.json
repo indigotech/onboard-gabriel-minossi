@@ -4,7 +4,7 @@
    "description": "Meu primeiro contato com a Taqtile :)",
    "main": "index.js",
    "scripts": {
-      "test": "mocha -r ts-node/register test/index.ts --exit",
+      "test": "TEST=true mocha -r ts-node/register test/index.ts --exit",
       "start": "ts-node -r dotenv/config src/index.ts"
    },
    "repository": {
