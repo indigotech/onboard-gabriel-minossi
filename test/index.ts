@@ -4,8 +4,9 @@ import { verify as verifyToken } from 'jsonwebtoken';
 import 'reflect-metadata';
 import * as supertest from 'supertest';
 import { createConnection, createConnections, getConnection, getRepository, Repository } from "typeorm";
-import { User } from "../src/entity/User";
-import { graphQLServer } from '../src/graphQLSetup';
+import { formatError } from '../error';
+import { User } from "src/entity/User";
+import { graphQLServer } from 'src/graphql-setup';
 
 
 dotenv.config({ path: process.cwd() + '/.env.test' })
@@ -13,12 +14,16 @@ dotenv.config({ path: process.cwd() + '/.env.test' })
 describe('GraphQL', () => {
 
   before(async () => {
-    await Promise.all([
-      createConnections(),
-      // createConnection('test'),
-      graphQLServer.start({ port: process.env.PORT })]
-    );
-    console.log(`Server is running on ${process.env.URL}`);
+    try {
+      await Promise.all([
+        createConnections(),
+        // createConnection('test'),
+        graphQLServer.start({ port: process.env.PORT })]
+      );
+      console.log(`Server is running on ${process.env.URL}`);
+    } catch (error) {
+      throw formatError(503, 'Are you sure the Docker database container is up?', error)
+    }
   });
 
   after(async () => {
@@ -115,7 +120,7 @@ describe('GraphQL', () => {
         });
     });
 
-    it(`Fails logging in for an unexistent email and an existent password`, (done) => {
+    it(`Fails logging in for a non-valid email and an existent password`, (done) => {
       request.post('/')
         .send({
           query: `mutation { login(email: "${wrongCredentials.email}", password: "${testUser.password}") { token } }`

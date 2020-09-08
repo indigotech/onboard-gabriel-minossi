@@ -1,7 +1,8 @@
 import { GraphQLServer } from "graphql-yoga";
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from "typeorm";
-import { User } from "./entity/User";
+import { formatError } from "error";
+import { User } from "src/entity/User";
 
 const typeDefs = `
 type Query {
@@ -54,6 +55,13 @@ const getVerification = async (auth) => {
     return verification;
 };
 
+
+const verifyEmail = (email: string): void => {
+    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
+        throw formatError(400, 'Invalid email');
+    } 
+}
+
 const resolvers = {
     Query: {
         hello: () => 'Hello!'
@@ -62,15 +70,16 @@ const resolvers = {
         login: async (_: any, { email, password, rememberMe }) => {
             const userRepository: Repository<User> = getRepository(User);
 
+            verifyEmail(email);
             let user: User;
             console.log("Searching for user on the database...");
             try {
                 user = await userRepository.findOneOrFail({ where: { email } });
             } catch {
-                throw new Error('Invalid Credentials')
+                throw formatError(401, 'Invalid Credentials');
             }
             if (password !== user.password) {
-                throw new Error('Invalid Credentials')
+                throw formatError(401, 'Invalid Credentials');
             } else {
                 const token = jwt.sign(
                     { id: user.id },
