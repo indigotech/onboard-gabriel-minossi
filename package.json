@@ -4,9 +4,9 @@
    "description": "Meu primeiro contato com a Taqtile :)",
    "main": "index.js",
    "scripts": {
-      "test": "TEST=true mocha -r tsconfig-paths/register -r ts-node/register src/test/index.ts --exit",
+      "test": "NODE_ENV=test mocha -r tsconfig-paths/register -r ts-node/register src/test/index.ts",
       "start": "ts-node -r tsconfig-paths/register -r dotenv/config src/index.ts",
-      "seeds": "TEST=true ts-node -r tsconfig-paths/register src/test/user-seeds.ts"
+      "seeds": "NODE_ENV=test ts-node -r tsconfig-paths/register src/test/user-seeds.ts"
    },
    "repository": {
       "type": "git",

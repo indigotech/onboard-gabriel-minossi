@@ -1,10 +1,22 @@
 import { User } from '@src/entity/User';
-import { graphQLServer } from '@src/graphql-setup';
-import { createConnection } from "typeorm";
+import { formatError } from '@src/error';
+import { graphQLServerPromise } from '@src/graphql-setup';
+import * as dotenv from 'dotenv';
+import { createConnection } from 'typeorm';
 
 
-createConnection({url: process.env.TYPEORM_URL, type:'postgres', entities:[User]}).then(() => {
-    graphQLServer.start(() => console.log(`Server is running on http://localhost:4000`));
-}).catch(() => {
-    (error: Error) => console.error('Error connecting to databse: ' + error);
-});
+dotenv.config({ path: process.cwd() + '/.env' + (process.env.NODE_ENV && '.' + process.env.NODE_ENV) });
+
+const setup = async () => {
+    try {
+        await Promise.all([
+            createConnection({ url: process.env.TYPEORM_URL, type: 'postgres', entities: [User] }),
+            graphQLServerPromise
+        ]);
+        console.log(`Server is running on ${process.env.URL}`);
+    } catch (error) {
+        throw formatError(503, 'Are you sure the Docker database container is up?', error)
+    }
+};
+
+setup();

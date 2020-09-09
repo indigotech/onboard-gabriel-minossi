@@ -1,10 +1,14 @@
 import { User } from "@src/entity/User";
 import { formatError } from "@src/error";
 import * as bcrypt from 'bcrypt';
+import * as dotenv from 'dotenv';
 import { GraphQLServer } from 'graphql-yoga';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
-import { getRepository, Repository } from "typeorm";
+import { getRepository, Repository } from 'typeorm';
+
+
+dotenv.config({ path: process.cwd() + '/.env' + (process.env.NODE_ENV && '.' + process.env.NODE_ENV) });
 
 const typeDefs = `
 type Query {
@@ -125,8 +129,9 @@ const resolvers = {
     },
 };
 
-export const graphQLServer = new GraphQLServer({
+
+export const graphQLServerPromise = new GraphQLServer({
     typeDefs,
     resolvers,
-    context: request => request,
-});
+    context: request => request
+}).start({ port: process.env.PORT });
