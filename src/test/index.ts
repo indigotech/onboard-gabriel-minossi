@@ -79,7 +79,7 @@ describe('GraphQL', () => {
 
     it(`Successfully returns a valid token for user with correct credentials`, async () => {
       const response = await login(correctCredentials);
-      const token = response.body.data.login.token
+      const token = response.body.data.login.token      
       expect(token, 'Missing token').to.exist;
       const verification = verifyToken(token, process.env.JWT_SECRET)
       expect(verification['id'].toString(), 'Token does not match user information').to.equal(response.body.data.login.user.id);
@@ -173,13 +173,7 @@ describe('GraphQL', () => {
       const { password, ...expectedResponse } = { ...newUser };
 
       const response = await createUser(newUser, token);
-      console.log(response.body);
-
-      console.log(await userRepository.find());
-      
-
       const loginResponse = await login({ email: response.body.data.createUser.email, password: unencryptedPassword }); 
-      console.log(loginResponse.body);
       expect(loginResponse.body.data.login.user).to.contain(expectedResponse);
     });
 
