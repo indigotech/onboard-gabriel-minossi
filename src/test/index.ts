@@ -18,7 +18,7 @@ describe('GraphQL', () => {
 
   before(async () => {
     try {
-      await createConnection({url: process.env.TYPEORM_URL, type:'postgres', entities:[User]});      
+      await createConnection({ url: process.env.TYPEORM_URL, type: 'postgres', entities: [User] });
       await graphQLServer.start({ port: process.env.PORT });
       console.log(`Server is running on ${process.env.URL}`);
       request = supertest(process.env.URL);
@@ -79,7 +79,7 @@ describe('GraphQL', () => {
 
     it(`Successfully returns a valid token for user with correct credentials`, async () => {
       const response = await login(correctCredentials);
-      const token = response.body.data.login.token      
+      const token = response.body.data.login.token
       expect(token, 'Missing token').to.exist;
       const verification = verifyToken(token, process.env.JWT_SECRET)
       expect(verification['id'].toString(), 'Token does not match user information').to.equal(response.body.data.login.user.id);
@@ -115,7 +115,7 @@ describe('GraphQL', () => {
   };
 
   const createUser = (user: UserInput, token: string) => {
-    const newUser = {...user};
+    const newUser = { ...user };
 
     return request.post('/')
       .auth(token, { type: 'bearer' })
@@ -165,7 +165,7 @@ describe('GraphQL', () => {
     it('Creates a new specified user for an user logged in correctly', async () => {
       const { password, ...expectedResponse } = { ...newUser };
 
-      const response = await createUser(newUser, token);      
+      const response = await createUser(newUser, token);
       expect(response.body.data.createUser).to.contain(expectedResponse);
     });
 
@@ -173,7 +173,7 @@ describe('GraphQL', () => {
       const { password, ...expectedResponse } = { ...newUser };
 
       const response = await createUser(newUser, token);
-      const loginResponse = await login({ email: response.body.data.createUser.email, password: unencryptedPassword }); 
+      const loginResponse = await login({ email: response.body.data.createUser.email, password: unencryptedPassword });
       expect(loginResponse.body.data.login.user).to.contain(expectedResponse);
     });
 
@@ -204,7 +204,7 @@ describe('GraphQL', () => {
       const invalidUser = { ...newUser };
       invalidUser.password = 'shortpass';
 
-      const response = await createUser(invalidUser, token);      
+      const response = await createUser(invalidUser, token);
       expect(response.body).to.have.property('errors');
     });
 
@@ -236,6 +236,85 @@ describe('GraphQL', () => {
       it('Fails if cpf is empty', () => {
         verifyEmptyField('cpf');
       });
+    });
+  });
+
+  const getUser = (id: number, token: string) => {
+    return request.post('/')
+      .auth(token, { type: 'bearer' })
+      .send({
+        query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
+        variables: { id }
+      });
+  };
+
+  describe('Get User', () => {
+    let userRepository: Repository<User>;
+    let token: string;
+    const unencryptedPassword = "Supersafe";
+    const existingUser: UserInput = {
+      name: "existing",
+      email: "existing-email@example.com",
+      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      birthDate: "01-01-1970",
+      cpf: 28
+    };
+    const newUser: UserInput = {
+      name: "new",
+      email: "new-email@example.com",
+      password: unencryptedPassword,
+      birthDate: "01-01-1970",
+      cpf: 28
+    };
+
+    before(() => {
+      userRepository = getRepository(User);
+    });
+
+    beforeEach(async () => {
+      await userRepository.save({ ...existingUser });
+
+      token = (await request.post('/')
+        .send({
+          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
+          variables: { email: existingUser.email, password: unencryptedPassword }
+        })).body.data.login.token
+    });
+
+    afterEach(async () => {
+      await userRepository.delete({});
+    });
+
+    it('Gets an existing user', async () => {
+      const { password, ...expectedResponse } = { ...existingUser };
+      const oldUser = await userRepository.findOne({ email: existingUser.email });
+
+      const response = await getUser(oldUser.id, token);
+      expect(response.body.data.user).to.contain(expectedResponse);
+    });
+
+    it('Gets a new user after it\'s creation', async () => {
+      const createdUser = await userRepository.save(newUser);
+      const { password, id, ...expectedResponse } = { ...createdUser };
+      expectedResponse['id'] = id.toString();
+
+      const response = await getUser(createdUser.id, token);
+      expect(response.body.data.user).to.contain(expectedResponse);
+    });
+
+    it('Fails to get an user with an unexistent id', async () => {
+      const response = await getUser(-1, token);
+      expect(response.body).to.have.property('errors');
+    });
+
+    it('Fails to get user if user is not logged in', async () => {
+      const oldToken = token
+      token = '';
+
+      const response = await createUser(newUser, token);
+      expect(response.body).to.have.property('errors');
+
+      token = oldToken;
     });
   });
 });
