@@ -57,7 +57,7 @@ const resolvers = {
     Mutation: {
         login: async (_, { email, password, rememberMe }) => {
 
-            const userRepository: Repository<User> = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
+            const userRepository: Repository<User> = getRepository(User);
 
             let user: User;
             try {
@@ -92,7 +92,7 @@ const resolvers = {
                     'and must contain at last one letter and one digit')
             }
 
-            const userRepository = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
+            const userRepository = getRepository(User);
 
             if (await userRepository.findOne({ where: { email: user.email } })) {
                 throw formatError(400, 'Email already in use');

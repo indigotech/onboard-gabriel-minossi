@@ -11,7 +11,7 @@ export class HttpError extends Error implements HttpError {
 
     constructor(code: number, message: string, error?: Error) {
         super();
-        this.name = 'httpError';
+        this.name = 'HttpError';
         this.code = code;
         this.message = message;
         this.additionalInfo = error && error.message + error.stack

@@ -1,12 +1,12 @@
+import { User } from "@src/entity/User";
+import { formatError } from '@src/error';
+import { graphQLServer } from '@src/graphql-setup';
 import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
 import * as dotenv from 'dotenv';
-import { formatError } from '@src/error';
 import { verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
 import 'reflect-metadata';
-import { User } from "@src/entity/User";
-import { graphQLServer } from '@src/graphql-setup';
 import * as supertest from 'supertest';
 import { createConnection, getConnection, getRepository, Repository } from "typeorm";
 
@@ -18,7 +18,7 @@ describe('GraphQL', () => {
 
   before(async () => {
     try {
-      await createConnection('test');
+      await createConnection({url: process.env.TYPEORM_URL, type:'postgres', entities:[User]});      
       await graphQLServer.start({ port: process.env.PORT });
       console.log(`Server is running on ${process.env.URL}`);
       request = supertest(process.env.URL);
@@ -28,7 +28,7 @@ describe('GraphQL', () => {
   });
 
   after(async () => {
-    await getConnection('test').close()
+    await getConnection().close()
   });
 
   type LoginInput = {
@@ -65,7 +65,7 @@ describe('GraphQL', () => {
 
 
     before(() => {
-      userRepository = getRepository(User, 'test');
+      userRepository = getRepository(User);
     });
 
     beforeEach(async () => {
@@ -145,7 +145,7 @@ describe('GraphQL', () => {
     };
 
     before(() => {
-      userRepository = getRepository(User, 'test');
+      userRepository = getRepository(User);
     });
 
     beforeEach(async () => {
