@@ -11,7 +11,7 @@ import * as supertest from 'supertest';
 import { createConnection, getConnection, getRepository, Repository } from 'typeorm';
 
 
-dotenv.config({ path: process.cwd() + process.env.TEST === 'true' ? './.env' : './.env.test' });
+dotenv.config({ path: process.cwd() + '/.env' + (process.env.NODE_ENV && '.' + process.env.NODE_ENV) });
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;

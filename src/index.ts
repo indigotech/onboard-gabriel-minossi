@@ -2,7 +2,7 @@ import { User } from '@src/entity/User';
 import { formatError } from '@src/error';
 import { graphQLServerPromise } from '@src/graphql-setup';
 import * as dotenv from 'dotenv';
-import { createConnection } from 'typeorm';
+import { createConnection, getConnection } from 'typeorm';
 
 
 dotenv.config({ path: process.cwd() + '/.env' + (process.env.NODE_ENV && '.' + process.env.NODE_ENV) });
@@ -15,8 +15,10 @@ const setup = async () => {
         ]);
         console.log(`Server is running on ${process.env.URL}`);
     } catch (error) {
+        (await graphQLServerPromise).close();
+        await getConnection().close()
         throw formatError(503, 'Are you sure the Docker database container is up?', error)
-    }
+      }
 };
 
 setup();
