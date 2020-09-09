@@ -1,4 +1,4 @@
-import { graphQLServer } from 'src/graphql-setup';
+import { graphQLServer } from '@src/graphql-setup';
 import { createConnection } from "typeorm";
 
 

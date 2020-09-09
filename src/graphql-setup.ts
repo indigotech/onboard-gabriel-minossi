@@ -1,8 +1,10 @@
-import { GraphQLServer } from "graphql-yoga";
+import * as bcrypt from 'bcrypt';
+import { User } from "@src/entity/User";
+import { formatError } from "@src/error";
+import { GraphQLServer } from 'graphql-yoga';
+import { Context, ContextCallback } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from "typeorm";
-import { formatError } from "error";
-import { User } from "src/entity/User";
 
 const typeDefs = `
 type Query {
@@ -36,49 +38,34 @@ type Login {
 }
 `;
 
-const getVerification = async (auth) => {
+const getVerification = (context: Context) => {
+    const auth = context.request.get('Authorization')
     if (!auth) {
-        throw new jwt.JsonWebTokenError('you must be logged in!');
+        throw new jwt.JsonWebTokenError('You must be logged in!');
     }
 
-    const token = auth.split('Bearer ')[1];
-    if (!token) {
-        throw new jwt.JsonWebTokenError('you should provide a token!');
-    }
+    const token = auth.replace('Bearer ', '');    
 
-    const verification = jwt.verify(token, process.env.JWT_SECRET, (err, decoded) => {
-        if (err) {
-            throw new jwt.JsonWebTokenError('invalid token!');
-        }
-        return decoded;
-    });
+    const verification = jwt.verify(token, process.env.JWT_SECRET);
     return verification;
 };
-
-
-const verifyEmail = (email: string): void => {
-    if (!/^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)) {
-        throw formatError(400, 'Invalid email');
-    } 
-}
 
 const resolvers = {
     Query: {
         hello: () => 'Hello!'
     },
     Mutation: {
-        login: async (_: any, { email, password, rememberMe }) => {
-            const userRepository: Repository<User> = getRepository(User);
+        login: async (_, { email, password, rememberMe }) => {
 
-            verifyEmail(email);
+            const userRepository: Repository<User> = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
+
             let user: User;
-            console.log("Searching for user on the database...");
             try {
                 user = await userRepository.findOneOrFail({ where: { email } });
             } catch {
                 throw formatError(401, 'Invalid Credentials');
             }
-            if (password !== user.password) {
+            if (!bcrypt.compareSync(password, user.password)) {
                 throw formatError(401, 'Invalid Credentials');
             } else {
                 const token = jwt.sign(
@@ -86,20 +73,39 @@ const resolvers = {
                     process.env.JWT_SECRET,
                     { expiresIn: rememberMe ? "1w" : "1h" }
                 );
-                return ({ user, token, })
+                return ({ user, token })
             }
         },
 
-        createUser: (_, { user }) => {
-            const userRepository = getRepository(User);
-            user = {
+        createUser: async (_, { user }, context: ContextCallback) => {
+            getVerification(context)
+
+            const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
+            const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
+
+            if (!isValid(user.email)) {
+                throw formatError(400, 'Invalid email');
+            }
+
+            if (isWeak(user.password)) {
+                throw formatError(400, 'Password must be at least 7 characters long' +
+                    'and must contain at last one letter and one digit')
+            }
+
+            const userRepository = getRepository(User, process.env.TEST === 'true' ? 'test' : 'default');
+
+            if (await userRepository.findOne({ where: { email: user.email } })) {
+                throw formatError(400, 'Email already in use');
+            }
+
+            const newUser = {
                 name: user.name,
                 email: user.email.toLowerCase(),
-                password: user.password,
+                password: bcrypt.hashSync(user.password, bcrypt.genSaltSync(6)),
                 birthDate: user.birthDate,
                 cpf: user.cpf,
             }
-            return userRepository.save(user);
+            return userRepository.save(newUser);
         }
     },
 };
@@ -107,4 +113,5 @@ const resolvers = {
 export const graphQLServer = new GraphQLServer({
     typeDefs,
     resolvers,
+    context: request => request
 });
