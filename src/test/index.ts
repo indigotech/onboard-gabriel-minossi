@@ -73,7 +73,7 @@ describe('GraphQL', () => {
     });
 
     afterEach(async () => {
-      await userRepository.delete({});
+      await userRepository.delete({ email: testUser.email });
     });
 
 
@@ -159,7 +159,8 @@ describe('GraphQL', () => {
     });
 
     afterEach(async () => {
-      await userRepository.delete({});
+      await userRepository.delete({ email: existingUser.email });
+      await userRepository.delete({ email: newUser.email });
     });
 
     it('Creates a new specified user for an user logged in correctly', async () => {
@@ -239,16 +240,16 @@ describe('GraphQL', () => {
     });
   });
 
-  const getUser = (id: number, token: string) => {
-    return request.post('/')
-      .auth(token, { type: 'bearer' })
-      .send({
-        query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
-        variables: { id }
-      });
-  };
-
   describe('Get User', () => {
+    const getUser = (token: string, id: number) => {
+      return request.post('/')
+        .auth(token, { type: 'bearer' })
+        .send({
+          query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
+          variables: { id }
+        });
+    };
+
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = "Supersafe";
@@ -282,28 +283,29 @@ describe('GraphQL', () => {
     });
 
     afterEach(async () => {
-      await userRepository.delete({});
+      await userRepository.delete({ email: existingUser.email });
+      await userRepository.delete({ email: newUser.email });
     });
 
     it('Gets an existing user', async () => {
       const { password, ...expectedResponse } = { ...existingUser };
       const oldUser = await userRepository.findOne({ email: existingUser.email });
 
-      const response = await getUser(oldUser.id, token);
+      const response = await getUser(token, oldUser.id);
       expect(response.body.data.user).to.contain(expectedResponse);
     });
 
     it('Gets a new user after it\'s creation', async () => {
-      const createdUser = await userRepository.save(newUser);
+      const createdUser = await userRepository.save({ ...newUser });
       const { password, id, ...expectedResponse } = { ...createdUser };
       expectedResponse['id'] = id.toString();
 
-      const response = await getUser(createdUser.id, token);
+      const response = await getUser(token, createdUser.id);
       expect(response.body.data.user).to.contain(expectedResponse);
     });
 
     it('Fails to get an user with an unexistent id', async () => {
-      const response = await getUser(-1, token);
+      const response = await getUser(token, -1);
       expect(response.body).to.have.property('errors');
     });
 
