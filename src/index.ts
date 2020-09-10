@@ -1,3 +1,6 @@
-import { setup } from '@src/server-setup';
+import { setupGraphQL, setupTypeORM } from '@src/server-setup';
 
-setup();
+Promise.all([
+    setupGraphQL(),
+    setupTypeORM()
+]).then(() => console.log(`GraphQLServer is running on http://${process.env.URL}`));

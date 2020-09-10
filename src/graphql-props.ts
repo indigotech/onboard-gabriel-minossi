@@ -1,8 +1,7 @@
-import { User } from "@src/entity/User";
+import { User } from '@src/entity/User';
 import { formatError } from "@src/error";
 import * as bcrypt from 'bcrypt';
-import * as dotenv from 'dotenv';
-import { Context, ContextCallback } from 'graphql-yoga/dist/types';
+import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from 'typeorm';
 
@@ -41,7 +40,7 @@ type Login {
 const getVerification = (context: Context) => {
   const auth = context.request.get('Authorization')
   if (!auth) {
-    throw new jwt.JsonWebTokenError('You must be logged in!');
+    throw formatError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
   }
 
   const token = auth.replace('Bearer ', '');
@@ -74,8 +73,8 @@ const resolvers = {
         return ({ user, token })
       }
     },
-    createUser: async (_, { user }, context: ContextCallback) => {
-      getVerification(context)
+    createUser: async (_, { user }, context: Context) => {
+      getVerification(context);
       const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
       const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
       if (!isValid(user.email)) {

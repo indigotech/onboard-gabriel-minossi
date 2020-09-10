@@ -1,5 +1,5 @@
 import { User } from '@src/entity/User';
-import { setup } from '@src/server-setup';
+import { setupGraphQL, setupTypeORM } from '@src/server-setup';
 import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
@@ -15,7 +15,11 @@ describe('GraphQL', () => {
 
   before(async () => {
     request = supertest(process.env.URL);
-    graphQLServer = await setup();
+    [graphQLServer,] = await Promise.all([
+      setupGraphQL(),
+      setupTypeORM()
+    ]);
+
   });
 
   after(async () => {
@@ -229,86 +233,6 @@ describe('GraphQL', () => {
       it('Fails if cpf is empty', () => {
         verifyEmptyField('cpf');
       });
-    });
-  });
-
-  describe('Get User', () => {
-    const getUser = (token: string, id: number) => {
-      return request.post('/')
-        .auth(token, { type: 'bearer' })
-        .send({
-          query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
-          variables: { id }
-        });
-    };
-
-    let userRepository: Repository<User>;
-    let token: string;
-    const unencryptedPassword = "Supersafe";
-    const existingUser: UserInput = {
-      name: "existing",
-      email: "existing-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
-      birthDate: "01-01-1970",
-      cpf: 28
-    };
-    const newUser: UserInput = {
-      name: "new",
-      email: "new-email@example.com",
-      password: unencryptedPassword,
-      birthDate: "01-01-1970",
-      cpf: 28
-    };
-
-    before(() => {
-      userRepository = getRepository(User);
-    });
-
-    beforeEach(async () => {
-      await userRepository.save({ ...existingUser });
-
-      token = (await request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
-          variables: { email: existingUser.email, password: unencryptedPassword }
-        })).body.data.login.token
-    });
-
-    afterEach(async () => {
-      await userRepository.delete({ email: existingUser.email });
-      await userRepository.delete({ email: newUser.email });
-    });
-
-    it('Gets an existing user', async () => {
-      const { password, ...expectedResponse } = { ...existingUser };
-      const oldUser = await userRepository.findOne({ email: existingUser.email });
-
-      const response = await getUser(token, oldUser.id);
-      expect(response.body.data.user).to.contain(expectedResponse);
-    });
-
-    it('Gets a new user after it\'s creation', async () => {
-      const createdUser = await userRepository.save({ ...newUser });
-      const { password, id, ...expectedResponse } = { ...createdUser };
-      expectedResponse['id'] = id.toString();
-
-      const response = await getUser(token, createdUser.id);
-      expect(response.body.data.user).to.contain(expectedResponse);
-    });
-
-    it('Fails to get an user with an unexistent id', async () => {
-      const response = await getUser(token, -1);
-      expect(response.body).to.have.property('errors');
-    });
-
-    it('Fails to get user if user is not logged in', async () => {
-      const oldToken = token
-      token = '';
-
-      const response = await createUser(newUser, token);
-      expect(response.body).to.have.property('errors');
-
-      token = oldToken;
     });
   });
 });
