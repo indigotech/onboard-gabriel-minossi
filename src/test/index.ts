@@ -1,6 +1,5 @@
 import { User } from '@src/entity/User';
 import { setupGraphQL, setupTypeORM } from '@src/server-setup';
-import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
@@ -31,7 +30,7 @@ describe('GraphQL', () => {
 
 
   describe('Login', () => {
-    type LoginInput = {
+    interface LoginInput {
       email: string
       password: string
     };
@@ -106,7 +105,7 @@ describe('GraphQL', () => {
   });
 
   describe('Create User', () => {
-    type CreateUserInput = {
+    interface CreateUserInput {
       name: string
       email: string
       password: string
@@ -244,7 +243,7 @@ describe('GraphQL', () => {
   });
 
   describe('Get Users', () => {
-    type CreateUserInput = {
+    interface CreateUserInput {
       name: string
       email: string
       password: string
@@ -252,7 +251,7 @@ describe('GraphQL', () => {
       cpf: number
     };
 
-    type UsersInput = {
+    interface UsersInput {
       count?: number
       skip?: number
     };
@@ -339,10 +338,10 @@ describe('GraphQL', () => {
 
     it(`Sorts users correctly by name`, async () => {
       const expectedUserNames = await userRepository.find({ select: ['name'], order: { name: 'ASC' } });
-      
+
       const allUserNames = await getAllUsers(token);
       expect(expectedUserNames).to.eql(allUserNames);
-      
+
     });
   });
 });

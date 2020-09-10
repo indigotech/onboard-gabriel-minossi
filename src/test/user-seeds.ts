@@ -1,6 +1,5 @@
 import { User } from '@src/entity/User';
 import { setupTypeORM } from '@src/server-setup';
-import * as bcrypt from 'bcrypt';
 import * as faker from 'faker';
 import { getConnection, getRepository } from 'typeorm';
 import { encrypt } from './helpers';

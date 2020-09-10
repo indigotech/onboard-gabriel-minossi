@@ -1,5 +1,5 @@
 import { User } from '@src/entity/User';
-import { formatError } from "@src/error";
+import { formatError } from '@src/error';
 import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';

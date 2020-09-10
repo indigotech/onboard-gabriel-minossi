@@ -5,9 +5,9 @@
    "main": "index.js",
    "scripts": {
       "test": "NODE_ENV=test mocha -r tsconfig-paths/register -r ts-node/register src/test/index.ts",
-      "start": "ts-node -r tsconfig-paths/register -r dotenv/config src/index.ts",
-      "test-seeds": "ts-node -r tsconfig-paths/register -r dotenv/config src/test/user-seeds.ts",
-      "seeds": "NODE_ENV=test ts-node -r tsconfig-paths/register src/test/user-seeds.ts"
+      "start": "ts-node -r tsconfig-paths/register src/index.ts",
+      "seeds": "ts-node -r tsconfig-paths/register src/test/user-seeds.ts",
+      "test-seeds": "NODE_ENV=test ts-node -r tsconfig-paths/register src/test/user-seeds.ts"
    },
    "repository": {
       "type": "git",
