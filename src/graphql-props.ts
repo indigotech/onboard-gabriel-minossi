@@ -8,6 +8,7 @@ import { getRepository, Repository } from 'typeorm';
 const typeDefs = `
 type Query {
   hello: String
+  user(id: ID!): User!
 }
 
 type Mutation {
@@ -51,12 +52,27 @@ const getVerification = (context: Context) => {
 
 const resolvers = {
   Query: {
-    hello: () => 'Hello!'
+    hello: () => 'Hello!',
+    user: async (_, { id }, context: Context) => {
+      getVerification(context);
+
+      const userRepository: Repository<User> = getRepository(User);
+      let user: User;
+      try {
+        user = await userRepository.findOneOrFail({ id });
+
+      } catch (error) {
+        throw formatError(404, 'User not found');
+      }
+      const { password, ...userReturn } = { ...user };
+      return userReturn;
+    }
   },
   Mutation: {
     login: async (_, { email, password, rememberMe }) => {
-      const userRepository: Repository<User> = getRepository(User);
+
       let user: User;
+      const userRepository: Repository<User> = getRepository(User);
       try {
         user = await userRepository.findOneOrFail({ where: { email } });
       } catch {
@@ -75,8 +91,10 @@ const resolvers = {
     },
     createUser: async (_, { user }, context: Context) => {
       getVerification(context);
+
       const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
       const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
+
       if (!isValid(user.email)) {
         throw formatError(400, 'Invalid email');
       }
@@ -84,10 +102,12 @@ const resolvers = {
         throw formatError(400, 'Password must be at least 7 characters long' +
           'and must contain at last one letter and one digit')
       }
+
       const userRepository = getRepository(User);
       if (await userRepository.findOne({ where: { email: user.email } })) {
         throw formatError(400, 'Email already in use');
       }
+
       const newUser = {
         name: user.name,
         email: user.email.toLowerCase(),
