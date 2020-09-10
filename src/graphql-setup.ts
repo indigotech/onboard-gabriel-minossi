@@ -42,7 +42,7 @@ type Login {
 const getVerification = (context: Context) => {
     const auth = context.request.get('Authorization')
     if (!auth) {
-        throw formatError(400, 'You must be logged in', new jwt.JsonWebTokenError(''));
+        throw formatError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
     }
 
     const token = auth.replace('Bearer ', '');
