@@ -3,7 +3,7 @@ import { setupGraphQL, setupTypeORM } from '@src/server-setup';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
-import { verify as verifyToken } from 'jsonwebtoken';
+import { verify as verifyToken, sign } from 'jsonwebtoken';
 import { it } from 'mocha';
 import * as supertest from 'supertest';
 import { getConnection, getRepository, Repository } from 'typeorm';
@@ -23,10 +23,10 @@ describe('GraphQL', () => {
   });
 
   after(async () => {
-    graphQLServer.close();
-    await getConnection().close()
+    graphQLServer && graphQLServer.close();
+    const connection = getConnection();
+    connection.isConnected && await connection.close()
   });
-
 
   describe('Login', () => {
     interface LoginInput {
@@ -60,7 +60,6 @@ describe('GraphQL', () => {
       password: unencryptedPassword.split("").reverse().join("")
     };
 
-
     before(() => {
       userRepository = getRepository(User);
     });
@@ -72,7 +71,6 @@ describe('GraphQL', () => {
     afterEach(async () => {
       await userRepository.delete({ email: existingUser.email });
     });
-
 
     it(`Successfully returns a valid token for user with correct credentials`, async () => {
       const response = await login(correctCredentials);
@@ -148,11 +146,8 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = (await request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf } } }`,
-          variables: { email: existingUser.email, password: unencryptedPassword }
-        })).body.data.login.token
+      token = sign({ id: -1 }, process.env.JWT_SECRET, { expiresIn: '2s' });
+
     });
 
     afterEach(async () => {
@@ -284,11 +279,7 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = (await request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
-          variables: { email: existingUser.email, password: unencryptedPassword }
-        })).body.data.login.token
+      token = sign({}, process.env.JWT_SECRET, { expiresIn: '2s' });
     });
 
     afterEach(async () => {
@@ -321,14 +312,9 @@ describe('GraphQL', () => {
     it('Fails to get user if user is not logged in', async () => {
       const oldToken = token
       token = '';
+      const oldUser = await userRepository.findOne({ email: existingUser.email });
 
-      const response = await request.post('/')
-        .auth(token, { type: 'bearer' })
-        .send({
-          query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
-          variables: { user: newUser }
-        });
-
+      const response = await getUser(token, oldUser.id);
       expect(response.body).to.have.property('errors');
 
       token = oldToken;
@@ -367,7 +353,7 @@ describe('GraphQL', () => {
       while (hasMore) {
         const response = await getUsers(token, input);
         hasMore = response.body.data.users.hasMore;
-        response.body.data.users.users.map(user => users.push(user));
+        response.body.data.users.users.map((user: User) => users.push(user));
         input.skip += input.count;
       }
 
@@ -400,11 +386,7 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = (await request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf } } }`,
-          variables: { email: existingUser.email, password: unencryptedPassword }
-        })).body.data.login.token
+      token = sign({ id: -1 }, process.env.JWT_SECRET, { expiresIn: '2s' });
 
       existingUsersCount = await userRepository.count();
     });
@@ -412,7 +394,6 @@ describe('GraphQL', () => {
     afterEach(async () => {
       await userRepository.delete({ email: existingUser.email });
     });
-
 
     it(`Gets the same ammount of users as there are in the database`, async () => {
       const allUsers = await getAllUsers(token);
