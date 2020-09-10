@@ -42,6 +42,8 @@ type Login {
 type Users {
   users: [User!]!
   hasMore: Boolean!
+  skippedUsers: Int!
+  totalUsers: Int!
 }
 `;
 
@@ -81,10 +83,14 @@ const resolvers = {
       skip = skip || 0;
 
       const userRepository: Repository<User> = getRepository(User);
-      const users = await userRepository.find({ take: count, skip, order: { name: 'ASC' } });
-      const hasMore = (await userRepository.count()) - skip - count > 0;
+      const [users, usersCount] = await Promise.all([
+        userRepository.find({ take: count, skip, order: { name: 'ASC' } }),
+        userRepository.count()
+      ]);
 
-      return { users, hasMore };
+      const hasMore = usersCount - skip - count > 0;
+
+      return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
     }
   },
   Mutation: {
