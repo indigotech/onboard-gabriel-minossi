@@ -1,14 +1,15 @@
-import * as bcrypt from 'bcrypt';
 import { User } from "@src/entity/User";
 import { formatError } from "@src/error";
+import * as bcrypt from 'bcrypt';
 import { GraphQLServer } from 'graphql-yoga';
-import { Context, ContextCallback } from 'graphql-yoga/dist/types';
+import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from "typeorm";
 
 const typeDefs = `
 type Query {
     hello: String
+    user(id: ID!): User!
 }
 
 type Mutation {
@@ -41,10 +42,10 @@ type Login {
 const getVerification = (context: Context) => {
     const auth = context.request.get('Authorization')
     if (!auth) {
-        throw new jwt.JsonWebTokenError('You must be logged in!');
+        throw formatError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
     }
 
-    const token = auth.replace('Bearer ', '');    
+    const token = auth.replace('Bearer ', '');
 
     const verification = jwt.verify(token, process.env.JWT_SECRET);
     return verification;
@@ -52,7 +53,21 @@ const getVerification = (context: Context) => {
 
 const resolvers = {
     Query: {
-        hello: () => 'Hello!'
+        hello: () => 'Hello!',
+        user: async (_, { id }, context: Context) => {
+            getVerification(context);
+
+            const userRepository: Repository<User> = getRepository(User);
+            let user: User;
+            try {
+                user = await userRepository.findOneOrFail({ id });
+
+            } catch (error) {
+                throw formatError(404, 'User not found');
+            }
+            const { password, ...userReturn } = { ...user };
+            return userReturn;
+        }
     },
     Mutation: {
         login: async (_, { email, password, rememberMe }) => {
@@ -77,8 +92,8 @@ const resolvers = {
             }
         },
 
-        createUser: async (_, { user }, context: ContextCallback) => {
-            getVerification(context)
+        createUser: async (_, { user }, context: Context) => {
+            getVerification(context);
 
             const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
             const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
@@ -113,5 +128,5 @@ const resolvers = {
 export const graphQLServer = new GraphQLServer({
     typeDefs,
     resolvers,
-    context: request => request
+    context: request => request,
 });
