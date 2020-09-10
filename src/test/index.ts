@@ -1,36 +1,25 @@
 import { User } from '@src/entity/User';
-import { formatError } from '@src/error';
-import { graphQLServerPromise } from '@src/graphql-setup';
+import { setup } from '@src/server-setup';
 import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
-import * as dotenv from 'dotenv';
+import { Server as HttpServer } from 'http';
+import { Server as HttpsServer } from 'https';
 import { verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
-import 'reflect-metadata';
 import * as supertest from 'supertest';
-import { createConnection, getConnection, getRepository, Repository } from 'typeorm';
-
-
-dotenv.config({ path: process.cwd() + '/.env' + (process.env.NODE_ENV && '.' + process.env.NODE_ENV) });
+import { getConnection, getRepository, Repository } from 'typeorm';
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;
+  let graphQLServer: HttpServer | HttpsServer;
 
   before(async () => {
-    try {
-      await Promise.all([createConnection({ url: process.env.TYPEORM_URL, type: 'postgres', entities: [User] }),
-        graphQLServerPromise]);
-      console.log(`Server is running on ${process.env.URL}`);
-      request = supertest(process.env.URL);
-    } catch (error) {
-      (await graphQLServerPromise).close();
-      await getConnection().close()
-      throw formatError(503, 'Are you sure the Docker database container is up?', error)
-    }
+    request = supertest(process.env.URL);
+    graphQLServer = await setup();
   });
 
   after(async () => {
-    (await graphQLServerPromise).close();
+    graphQLServer.close();
     await getConnection().close()
   });
 
