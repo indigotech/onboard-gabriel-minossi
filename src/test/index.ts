@@ -28,7 +28,6 @@ describe('GraphQL', () => {
   });
 
 
-
   describe('Login', () => {
     interface LoginInput {
       email: string
@@ -242,6 +241,100 @@ describe('GraphQL', () => {
     });
   });
 
+  describe('Get User', () => {
+    interface CreateUserInput {
+      name: string
+      email: string
+      password: string
+      birthDate: string
+      cpf: number
+    };
+
+    const getUser = (token: string, id: number) => {
+      return request.post('/')
+        .auth(token, { type: 'bearer' })
+        .send({
+          query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
+          variables: { id }
+        });
+    };
+
+    let userRepository: Repository<User>;
+    let token: string;
+    const unencryptedPassword = "Supersafe";
+    const existingUser: Partial<User> = {
+      name: "existing",
+      email: "existing-email@example.com",
+      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      birthDate: "01-01-1970",
+      cpf: 28
+    };
+    const newUser: CreateUserInput = {
+      name: "new",
+      email: "new-email@example.com",
+      password: unencryptedPassword,
+      birthDate: "01-01-1970",
+      cpf: 28
+    };
+
+    before(() => {
+      userRepository = getRepository(User);
+    });
+
+    beforeEach(async () => {
+      await userRepository.save({ ...existingUser });
+
+      token = (await request.post('/')
+        .send({
+          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
+          variables: { email: existingUser.email, password: unencryptedPassword }
+        })).body.data.login.token
+    });
+
+    afterEach(async () => {
+      await userRepository.delete({ email: existingUser.email });
+      await userRepository.delete({ email: newUser.email });
+    });
+
+    it('Gets an existing user', async () => {
+      const { password, ...expectedResponse } = { ...existingUser };
+      const oldUser = await userRepository.findOne({ email: existingUser.email });
+
+      const response = await getUser(token, oldUser.id);
+      expect(response.body.data.user).to.contain(expectedResponse);
+    });
+
+    it('Gets a new user after it\'s creation', async () => {
+      const createdUser = await userRepository.save({ ...newUser });
+      const { password, id, ...expectedResponse } = { ...createdUser };
+      expectedResponse['id'] = id.toString();
+
+      const response = await getUser(token, createdUser.id);
+      expect(response.body.data.user).to.contain(expectedResponse);
+    });
+
+    it('Fails to get an user with an unexistent id', async () => {
+      const response = await getUser(token, -1);
+      expect(response.body).to.have.property('errors');
+    });
+
+    it('Fails to get user if user is not logged in', async () => {
+      const oldToken = token
+      token = '';
+
+      const response = await request.post('/')
+        .auth(token, { type: 'bearer' })
+        .send({
+          query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
+          variables: { user: newUser }
+        });
+
+      expect(response.body).to.have.property('errors');
+
+      token = oldToken;
+    });
+  });
+
   describe('Get Users', () => {
     interface CreateUserInput {
       name: string
@@ -261,7 +354,7 @@ describe('GraphQL', () => {
       return request.post('/')
         .auth(token, { type: 'bearer' })
         .send({
-          query: `query { users(count: 25) { hasMore users { name } } }`,
+          query: `query getUsers($count: Int, $skip: Int) { users(count: $count, skip: $skip) { hasMore users { name } } }`,
           variables
         });
     };
@@ -273,7 +366,7 @@ describe('GraphQL', () => {
 
       while (hasMore) {
         const response = await getUsers(token, input);
-        hasMore = response.body.data.users.hasMore === 'true';
+        hasMore = response.body.data.users.hasMore;
         response.body.data.users.users.map(user => users.push(user));
         input.skip += input.count;
       }

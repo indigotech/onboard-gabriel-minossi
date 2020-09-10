@@ -10,6 +10,7 @@ const typeDefs = `
 type Query {
   hello: String
   user(id: ID!): User!
+  users(count: Int, skip: Int): Users!
 }
 
 type Mutation {
@@ -36,6 +37,11 @@ input UserInput {
 type Login {
   user: User!
   token: String!
+}
+
+type Users {
+  users: [User!]!
+  hasMore: Boolean!
 }
 `;
 
@@ -67,6 +73,18 @@ const resolvers = {
       }
       const { password, ...userReturn } = { ...user };
       return userReturn;
+    },
+    users: async (_, { count, skip }, context: Context) => {
+      getVerification(context);
+
+      count = count || 10;
+      skip = skip || 0;
+
+      const userRepository: Repository<User> = getRepository(User);
+      const users = await userRepository.find({ take: count, skip, order: { name: 'ASC' } });
+      const hasMore = (await userRepository.count()) - skip - count > 0;
+
+      return { users, hasMore };
     }
   },
   Mutation: {
@@ -105,6 +123,7 @@ const resolvers = {
       }
 
       const userRepository = getRepository(User);
+
       if (await userRepository.findOne({ where: { email: user.email } })) {
         throw formatError(400, 'Email already in use');
       }
