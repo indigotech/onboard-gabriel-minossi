@@ -245,7 +245,7 @@ describe('GraphQL', () => {
       cpf: number
     };
 
-    const getUser = (token: string, id: number) => {
+    const getUser = (token: string, id: string) => {
       return request.post('/')
         .auth(token, { type: 'bearer' })
         .send({
@@ -305,7 +305,7 @@ describe('GraphQL', () => {
     });
 
     it('Fails to get an user with an unexistent id', async () => {
-      const response = await getUser(token, -1);
+      const response = await getUser(token, '');
       expect(response.body).to.have.property('errors');
     });
 
@@ -340,24 +340,28 @@ describe('GraphQL', () => {
       return request.post('/')
         .auth(token, { type: 'bearer' })
         .send({
-          query: `query getUsers($count: Int, $skip: Int) { users(count: $count, skip: $skip) { hasMore users { name } } }`,
+          query: `query getUsers($count: Int, $skip: Int) { users(count: $count, skip: $skip) { hasMore users { id name email birthDate cpf } } }`,
           variables
         });
     };
 
-    const getAllUsers = async (token: string) => {
-      let users: User[] = [];
-      let input: UsersInput = { count: 100, skip: 0 }
-      let hasMore = true;
+    const parseDatabaseUsers = (users: User[]) => users.map(user => {
+      delete user.password;
+      user.id = user.id.toString();
+      return user;
+    });
 
-      while (hasMore) {
-        const response = await getUsers(token, input);
-        hasMore = response.body.data.users.hasMore;
-        response.body.data.users.users.map((user: User) => users.push(user));
-        input.skip += input.count;
-      }
+    const verifyGetUsers = async (count?: number, skip?: number) => {
+      count = count || null;
+      skip = skip || null;
 
-      return users;
+      const [databaseUsers, response] = await Promise.all([
+        userRepository.find({ take: count || 10, skip, order: { name: 'ASC' } }),
+        getUsers(token, { count, skip })
+      ]);
+
+      const expectedUsers = parseDatabaseUsers(databaseUsers);
+      expect(expectedUsers).to.eql(response.body.data.users.users);
     }
 
     let userRepository: Repository<User>;
@@ -395,9 +399,14 @@ describe('GraphQL', () => {
       await userRepository.delete({ email: existingUser.email });
     });
 
-    it(`Gets the same ammount of users as there are in the database`, async () => {
-      const allUsers = await getAllUsers(token);
-      expect(existingUsersCount).to.equal(allUsers.length)
+    it('Gets users', async () => {
+      await verifyGetUsers();
+    });
+
+    it(`Gets all users`, async () => {
+      const count = existingUsersCount;
+
+      await verifyGetUsers(count);
     });
 
     it(`Fails to get users without a valid token`, async () => {
@@ -410,12 +419,28 @@ describe('GraphQL', () => {
       token = oldToken;
     });
 
-    it(`Sorts users correctly by name`, async () => {
-      const expectedUserNames = await userRepository.find({ select: ['name'], order: { name: 'ASC' } });
+    describe('Pagination', () => {
 
-      const allUserNames = await getAllUsers(token);
-      expect(expectedUserNames).to.eql(allUserNames);
+      it('Gets users from the beggining of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = 0;
 
+        await verifyGetUsers(count, skip);
+      });
+
+      it('Gets users from the middle of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = existingUsersCount / 5 * 2 | 0;
+
+        await verifyGetUsers(count, skip);
+      });
+
+      it('Gets users from the end of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = existingUsersCount / 5 * 4 | 0;
+
+        await verifyGetUsers(count, skip);
+      });
     });
   });
 });
