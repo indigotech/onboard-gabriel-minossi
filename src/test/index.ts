@@ -1,10 +1,9 @@
 import { User } from '@src/entity/User';
 import { setupGraphQL, setupTypeORM } from '@src/server-setup';
-import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
-import { verify as verifyToken } from 'jsonwebtoken';
+import { verify as verifyToken, sign } from 'jsonwebtoken';
 import { it } from 'mocha';
 import * as supertest from 'supertest';
 import { getConnection, getRepository, Repository } from 'typeorm';
@@ -15,36 +14,37 @@ describe('GraphQL', () => {
   let graphQLServer: HttpServer | HttpsServer;
 
   before(async () => {
-    request = supertest(process.env.URL);
+    request = supertest(`${process.env.GRAPHQL_HOST}:${process.env.GRAPHQL_PORT}`);
     [graphQLServer,] = await Promise.all([
       setupGraphQL(),
       setupTypeORM()
     ]);
-
+    console.log()
   });
 
   after(async () => {
-    graphQLServer.close();
-    await getConnection().close()
+    graphQLServer && graphQLServer.close();
+    const connection = getConnection();
+    connection.isConnected && await connection.close()
   });
 
-  type LoginInput = {
-    email: string
-    password: string
-  };
-
-  const login = (credentials: LoginInput) => {
-    return request.post('/')
-      .send({
-        query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
-        variables: { email: credentials.email, password: credentials.password }
-      });
-  };
-
   describe('Login', () => {
+    interface LoginInput {
+      email: string
+      password: string
+    };
+
+    const login = (credentials: LoginInput) => {
+      return request.post('/')
+        .send({
+          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf } } }`,
+          variables: { email: credentials.email, password: credentials.password }
+        });
+    };
+
     let userRepository: Repository<User>;
     const unencryptedPassword = "Supersafe";
-    const testUser = {
+    const existingUser: Partial<User> = {
       name: "test",
       email: "test-email@example.com",
       password: encrypt(unencryptedPassword),
@@ -52,88 +52,101 @@ describe('GraphQL', () => {
       cpf: 28
     };
     const correctCredentials = {
-      email: testUser.email,
+      email: existingUser.email,
       password: unencryptedPassword
     };
     const wrongCredentials = {
-      email: testUser.email.split("").reverse().join(""),
+      email: existingUser.email.split("").reverse().join(""),
       password: unencryptedPassword.split("").reverse().join("")
     };
-
 
     before(() => {
       userRepository = getRepository(User);
     });
 
     beforeEach(async () => {
-      await userRepository.save({ ...testUser });
+      await userRepository.save({ ...existingUser });
     });
 
     afterEach(async () => {
-      await userRepository.delete({ email: testUser.email });
+      await userRepository.delete({ email: existingUser.email });
     });
 
+    it('Says hello :)', async () => {
+      try {
+        const response = await request.post('/')
+          .send({
+            query: `query hello`,
+          })
+      } catch (error) {
+        console.log(error);
+      }
+
+    })
 
     it(`Successfully returns a valid token for user with correct credentials`, async () => {
-      const response = await login(correctCredentials);
-      const token = response.body.data.login.token
+      const loginResponse = await login(correctCredentials);
+      const token = loginResponse.body.data.login.token
       expect(token, 'Missing token').to.exist;
       const verification = verifyToken(token, process.env.JWT_SECRET)
-      expect(verification['id'].toString(), 'Token does not match user information').to.equal(response.body.data.login.user.id);
+      expect(verification['id'], 'Token does not match user information').to.equal(loginResponse.body.data.login.user.id);
     });
 
     it(`Successfully returns the right user for the correct credentials`, async () => {
-      const { password, ...expectedResponse } = { ...testUser }
+      const { password, ...expectedUser } = { ...existingUser };
 
-      const response = await login(correctCredentials);
-      expect(response.body.data.login.user).to.contain(expectedResponse);
+      const mutationUser = (await login(correctCredentials)).body.data.login.user;
+      delete mutationUser.id;
+
+      expect(mutationUser).to.deep.equal(expectedUser);
     });
 
     it(`Fails logging in for an existent email with a wrong password`, async () => {
       const credentials = { email: correctCredentials.email, password: wrongCredentials.password };
+      const loginResponse = await login(credentials);
 
-      const response = await login(credentials);
-      expect(response.body, 'Error expected').to.have.property('errors');
+      expect(loginResponse.body, 'Error expected').to.have.property('errors');
     });
 
     it(`Fails logging in for an unexistent email and an existent password`, async () => {
       const credentials = { email: wrongCredentials.email, password: correctCredentials.password };
-      const response = await login(credentials);
-      expect(response.body, 'Error expected').to.have.property('errors');
+      const loginResonse = await login(credentials);
+
+      expect(loginResonse.body, 'Error expected').to.have.property('errors');
     });
   });
 
-  type UserInput = {
-    name: string
-    email: string
-    password: string
-    birthDate: string
-    cpf: number
-  };
-
-  const createUser = (user: UserInput, token: string) => {
-    const newUser = { ...user };
-
-    return request.post('/')
-      .auth(token, { type: 'bearer' })
-      .send({
-        query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
-        variables: { user: newUser }
-      });
-  };
-
   describe('Create User', () => {
+    interface CreateUserInput {
+      name: string
+      email: string
+      password: string
+      birthDate: string
+      cpf: number
+    };
+
+    const createUser = (token: string, user: CreateUserInput) => {
+      const newUser = { ...user };
+
+      return request.post('/')
+        .auth(token, { type: 'bearer' })
+        .send({
+          query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
+          variables: { user: newUser }
+        });
+    };
+
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = "Supersafe";
-    const existingUser: UserInput = {
+    const existingUser: Partial<User> = {
       name: "existing",
       email: "existing-email@example.com",
       password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
-    const newUser: UserInput = {
+    const newUser: CreateUserInput = {
       name: "new",
       email: "new-email@example.com",
       password: unencryptedPassword,
@@ -148,11 +161,8 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = (await request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
-          variables: { email: existingUser.email, password: unencryptedPassword }
-        })).body.data.login.token
+      token = sign({}, process.env.JWT_SECRET, { expiresIn: '2s' });
+
     });
 
     afterEach(async () => {
@@ -161,31 +171,40 @@ describe('GraphQL', () => {
     });
 
     it('Creates a new specified user for an user logged in correctly', async () => {
-      const { password, ...expectedResponse } = { ...newUser };
+      const { password, ...expectedUser } = { ...newUser };
 
-      const response = await createUser(newUser, token);
-      expect(response.body.data.createUser).to.contain(expectedResponse);
+      const mutationUser = (await createUser(token, newUser)).body.data.createUser;
+      delete mutationUser.id;
+
+      expect(mutationUser).to.deep.equal(expectedUser);
     });
 
     it('Logs in to an user account after creation', async () => {
-      const { password, ...expectedResponse } = { ...newUser };
+      const { password, ... expectedUser } = { ...newUser };
 
-      const response = await createUser(newUser, token);
-      const loginResponse = await login({ email: response.body.data.createUser.email, password: unencryptedPassword });
-      expect(loginResponse.body.data.login.user).to.contain(expectedResponse);
+      const createdUser = (await createUser(token, newUser)).body.data.createUser;
+      const mutationUser = (await request.post('/')
+        .send({
+          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { user { name email birthDate cpf } } }`,
+          variables: { email: createdUser.email, password: unencryptedPassword }
+        })).body.data.login.user;
+
+      expect(mutationUser).to.deep.equal(expectedUser);
     });
 
     it('Fails to create a new user with an already registered email', async () => {
-      const response = await createUser(existingUser, token);
-      expect(response.body).to.have.property('errors');
+      const createUserResponse = await createUser(token, existingUser as CreateUserInput);
+
+      expect(createUserResponse.body).to.have.property('errors');
     });
 
     it('Fails to create a new user if user is not logged in', async () => {
       const oldToken = token
       token = '';
 
-      const response = await createUser(newUser, token);
-      expect(response.body).to.have.property('errors');
+      const createUserResponse = await createUser(token, newUser);
+
+      expect(createUserResponse.body).to.have.property('errors');
 
       token = oldToken;
     });
@@ -193,17 +212,18 @@ describe('GraphQL', () => {
     it('Fails to create a new user with an invalid email', async () => {
       const invalidUser = { ...newUser };
       invalidUser.email = 'shortmail';
+      const createUserResponse = await createUser(token, invalidUser);
 
-      const response = await createUser(invalidUser, token);
-      expect(response.body).to.have.property('errors');
+      expect(createUserResponse.body).to.have.property('errors');
     });
 
     it('Fails to create a new user with a weak password', async () => {
       const invalidUser = { ...newUser };
       invalidUser.password = 'shortpass';
 
-      const response = await createUser(invalidUser, token);
-      expect(response.body).to.have.property('errors');
+      const createUserResponse = await createUser(token, invalidUser);
+
+      expect(createUserResponse.body).to.have.property('errors');
     });
 
     describe('Empty fields', () => {
@@ -211,7 +231,7 @@ describe('GraphQL', () => {
       const verifyEmptyField = async (field: keyof (User)) => {
         const invalidUser = { ...newUser };
         invalidUser[`${field}`] = undefined;
-        const response = await createUser(invalidUser, token);
+        const response = await createUser(token, invalidUser);
         expect(response.body, 'Error expected').to.have.property('errors');
       };
 
@@ -238,7 +258,15 @@ describe('GraphQL', () => {
   });
 
   describe('Get User', () => {
-    const getUser = (token: string, id: number) => {
+    interface CreateUserInput {
+      name: string
+      email: string
+      password: string
+      birthDate: string
+      cpf: number
+    };
+
+    const getUser = (token: string, id: string) => {
       return request.post('/')
         .auth(token, { type: 'bearer' })
         .send({
@@ -250,14 +278,14 @@ describe('GraphQL', () => {
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = "Supersafe";
-    const existingUser: UserInput = {
+    const existingUser: Partial<User> = {
       name: "existing",
       email: "existing-email@example.com",
       password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
-    const newUser: UserInput = {
+    const newUser: CreateUserInput = {
       name: "new",
       email: "new-email@example.com",
       password: unencryptedPassword,
@@ -272,11 +300,7 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = (await request.post('/')
-        .send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf} } }`,
-          variables: { email: existingUser.email, password: unencryptedPassword }
-        })).body.data.login.token
+      token = sign({}, process.env.JWT_SECRET, { expiresIn: '2s' });
     });
 
     afterEach(async () => {
@@ -285,35 +309,170 @@ describe('GraphQL', () => {
     });
 
     it('Gets an existing user', async () => {
-      const { password, ...expectedResponse } = { ...existingUser };
-      const oldUser = await userRepository.findOne({ email: existingUser.email });
+      const { password, ...expectedUser } = { ...existingUser };
 
-      const response = await getUser(token, oldUser.id);
-      expect(response.body.data.user).to.contain(expectedResponse);
+      const oldUser = await userRepository.findOne({ email: existingUser.email });
+      const queryUser = (await getUser(token, oldUser.id)).body.data.user;
+      delete queryUser.id;
+
+      expect(queryUser).to.deep.equal(expectedUser);
     });
 
     it('Gets a new user after it\'s creation', async () => {
       const createdUser = await userRepository.save({ ...newUser });
-      const { password, id, ...expectedResponse } = { ...createdUser };
-      expectedResponse['id'] = id.toString();
+      const { password, id, ...expectedUser } = { ...createdUser };
 
-      const response = await getUser(token, createdUser.id);
-      expect(response.body.data.user).to.contain(expectedResponse);
+      const queryUser = (await getUser(token, createdUser.id)).body.data.user;
+      delete queryUser.id;
+
+      expect(queryUser).to.deep.equal(expectedUser);
     });
 
     it('Fails to get an user with an unexistent id', async () => {
-      const response = await getUser(token, -1);
-      expect(response.body).to.have.property('errors');
+      const getUserResponse = await getUser(token, '');
+
+      expect(getUserResponse.body).to.have.property('errors');
     });
 
     it('Fails to get user if user is not logged in', async () => {
       const oldToken = token
       token = '';
 
-      const response = await createUser(newUser, token);
-      expect(response.body).to.have.property('errors');
+      const oldUser = await userRepository.findOne({ email: existingUser.email });
+      const getUserResponse = await getUser(token, oldUser.id);
+
+      expect(getUserResponse.body).to.have.property('errors');
 
       token = oldToken;
+    });
+  });
+
+  describe('Get Users', () => {
+    interface CreateUserInput {
+      name: string
+      email: string
+      password: string
+      birthDate: string
+      cpf: number
+    };
+
+    interface UsersInput {
+      count?: number
+      skip?: number
+    };
+
+    const getUsers = (token: string, input?: UsersInput) => {
+      const variables = input || null
+      return request.post('/')
+        .auth(token, { type: 'bearer' })
+        .send({
+          query: `query getUsers($count: Int, $skip: Int) { users(count: $count, skip: $skip) { hasMore users { id name email birthDate cpf } } }`,
+          variables
+        });
+    };
+
+    const parseDatabaseUsers = (users: User[]) => users.map(user => {
+      delete user.password;
+      return user;
+    });
+
+    const verifyGetUsers = async (count?: number, skip?: number) => {
+      count = count || null;
+      skip = skip || null;
+
+      const [databaseUsers, getUsersResponse] = await Promise.all([
+        userRepository.find({ take: count || 10, skip, order: { name: 'ASC' } }),
+        getUsers(token, { count, skip })
+      ]);
+      const expectedUsers = parseDatabaseUsers(databaseUsers);
+
+      expect(expectedUsers).to.deep.equal(getUsersResponse.body.data.users.users);
+    }
+
+    let userRepository: Repository<User>;
+    let existingUsersCount: number
+    let token: string;
+    const unencryptedPassword = "Supersafe";
+    const existingUser: Partial<User> = {
+      name: "existing",
+      email: "existing-email@example.com",
+      password: encrypt(unencryptedPassword),
+      birthDate: "01-01-1970",
+      cpf: 28
+    };
+    const newUser: CreateUserInput = {
+      name: "new",
+      email: "new-email@example.com",
+      password: unencryptedPassword,
+      birthDate: "01-01-1970",
+      cpf: 28
+    };
+
+    before(() => {
+      userRepository = getRepository(User);
+    });
+
+    beforeEach(async () => {
+      await userRepository.save({ ...existingUser });
+
+      token = sign({}, process.env.JWT_SECRET, { expiresIn: '2s' });
+
+      existingUsersCount = await userRepository.count();
+    });
+
+    afterEach(async () => {
+      await userRepository.delete({ email: existingUser.email });
+    });
+
+    it('Gets users', async () => {
+      await verifyGetUsers();
+    });
+
+    it(`Gets all users`, async () => {
+      const count = existingUsersCount;
+
+      await verifyGetUsers(count);
+    });
+
+    it(`Fails to get users without a valid token`, async () => {
+      const oldToken = token
+      token = '';
+
+      const getUsersResponse = await getUsers(token);
+      expect(getUsersResponse.body).to.have.property('errors');
+
+      token = oldToken;
+    });
+
+    describe('Pagination', () => {
+
+      it('Gets users from the beggining of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = 0;
+
+        await verifyGetUsers(count, skip);
+      });
+
+      it('Gets users from the middle of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = existingUsersCount / 5 * 2 | 0;
+
+        await verifyGetUsers(count, skip);
+      });
+
+      it('Gets users from the end of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = existingUsersCount / 5 * 4 | 0;
+
+        await verifyGetUsers(count, skip);
+      });
+
+      it('Gets users from beyond the end of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = existingUsersCount + 1;
+
+        await verifyGetUsers(count, skip);
+      });
     });
   });
 });
