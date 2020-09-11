@@ -14,7 +14,7 @@ export class HttpError extends Error implements HttpError {
         this.name = 'HttpError';
         this.code = code;
         this.message = message;
-        this.additionalInfo = error && error.message + error.stack
+        this.additionalInfo = error && error.name + (error.message && `: ${error.message}`);
     }
 }
 

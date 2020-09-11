@@ -1,13 +1,13 @@
 import { User } from '@src/entity/User';
+import { encrypt } from '@src/helpers';
 import { setupGraphQL, setupTypeORM } from '@src/server-setup';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
-import { verify as verifyToken, sign } from 'jsonwebtoken';
+import { sign, verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
 import * as supertest from 'supertest';
 import { getConnection, getRepository, Repository } from 'typeorm';
-import { encrypt } from './helpers';
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;

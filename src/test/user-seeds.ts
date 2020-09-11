@@ -1,8 +1,8 @@
 import { User } from '@src/entity/User';
+import { encrypt } from '@src/helpers';
 import { setupTypeORM } from '@src/server-setup';
 import * as faker from 'faker';
 import { getConnection, getRepository } from 'typeorm';
-import { encrypt } from './helpers';
 
 setupTypeORM().then(() => {
   const users: Partial<User>[] = [];
