@@ -28,6 +28,21 @@ describe('GraphQL', () => {
     connection.isConnected && await connection.close()
   });
 
+  describe('Hello', () => {
+    it('Says hello :)', async () => {
+      let helloResponse;
+      try {
+        helloResponse = await request.post('/')
+          .send({
+            query: `query hello { hello }`,
+          })
+      } catch (error) {
+        console.log(error);
+      }
+      expect(helloResponse.body.data.hello).to.equal('Hello!')
+    });
+  });
+
   describe('Login', () => {
     interface LoginInput {
       email: string
@@ -72,18 +87,6 @@ describe('GraphQL', () => {
       await userRepository.delete({ email: existingUser.email });
     });
 
-    it('Says hello :)', async () => {
-      try {
-        const response = await request.post('/')
-          .send({
-            query: `query hello`,
-          })
-      } catch (error) {
-        console.log(error);
-      }
-
-    })
-
     it(`Successfully returns a valid token for user with correct credentials`, async () => {
       const loginResponse = await login(correctCredentials);
       const token = loginResponse.body.data.login.token
@@ -106,13 +109,15 @@ describe('GraphQL', () => {
       const loginResponse = await login(credentials);
 
       expect(loginResponse.body, 'Error expected').to.have.property('errors');
+      expect(loginResponse.body.errors[0].code).to.equal(401);
     });
 
     it(`Fails logging in for an unexistent email and an existent password`, async () => {
       const credentials = { email: wrongCredentials.email, password: correctCredentials.password };
-      const loginResonse = await login(credentials);
+      const loginResponse = await login(credentials);
 
-      expect(loginResonse.body, 'Error expected').to.have.property('errors');
+      expect(loginResponse.body, 'Error expected').to.have.property('errors');
+      expect(loginResponse.body.errors[0].code).to.equal(401);
     });
   });
 
@@ -180,7 +185,7 @@ describe('GraphQL', () => {
     });
 
     it('Logs in to an user account after creation', async () => {
-      const { password, ... expectedUser } = { ...newUser };
+      const { password, ...expectedUser } = { ...newUser };
 
       const createdUser = (await createUser(token, newUser)).body.data.createUser;
       const mutationUser = (await request.post('/')
@@ -196,6 +201,7 @@ describe('GraphQL', () => {
       const createUserResponse = await createUser(token, existingUser as CreateUserInput);
 
       expect(createUserResponse.body).to.have.property('errors');
+      expect(createUserResponse.body.errors[0].code).to.equal(400);
     });
 
     it('Fails to create a new user if user is not logged in', async () => {
@@ -205,6 +211,7 @@ describe('GraphQL', () => {
       const createUserResponse = await createUser(token, newUser);
 
       expect(createUserResponse.body).to.have.property('errors');
+      expect(createUserResponse.body.errors[0].code).to.equal(401);
 
       token = oldToken;
     });
@@ -215,6 +222,7 @@ describe('GraphQL', () => {
       const createUserResponse = await createUser(token, invalidUser);
 
       expect(createUserResponse.body).to.have.property('errors');
+      expect(createUserResponse.body.errors[0].code).to.equal(400);
     });
 
     it('Fails to create a new user with a weak password', async () => {
@@ -224,6 +232,7 @@ describe('GraphQL', () => {
       const createUserResponse = await createUser(token, invalidUser);
 
       expect(createUserResponse.body).to.have.property('errors');
+      expect(createUserResponse.body.errors[0].code).to.equal(400);
     });
 
     describe('Empty fields', () => {
@@ -231,8 +240,8 @@ describe('GraphQL', () => {
       const verifyEmptyField = async (field: keyof (User)) => {
         const invalidUser = { ...newUser };
         invalidUser[`${field}`] = undefined;
-        const response = await createUser(token, invalidUser);
-        expect(response.body, 'Error expected').to.have.property('errors');
+        const createUserResponse = await createUser(token, invalidUser);
+        expect(createUserResponse.body, 'Error expected').to.have.property('errors');
       };
 
       it('Fails if name is empty', () => {
@@ -332,6 +341,7 @@ describe('GraphQL', () => {
       const getUserResponse = await getUser(token, '');
 
       expect(getUserResponse.body).to.have.property('errors');
+      expect(getUserResponse.body.errors[0].code).to.equal(404);
     });
 
     it('Fails to get user if user is not logged in', async () => {

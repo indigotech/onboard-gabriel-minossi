@@ -1,6 +1,7 @@
 import { HttpError } from '@src/error';
 import { graphQLProps } from '@src/graphql-props';
 import * as dotenv from 'dotenv';
+import { GraphQLError } from 'graphql';
 import { GraphQLServer } from 'graphql-yoga';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
@@ -24,7 +25,12 @@ export const setupTypeORM = async () => {
 export const setupGraphQL = async (): Promise<HttpServer | HttpsServer> => {
   let graphQLServer
   try {
-    graphQLServer = await new GraphQLServer(graphQLProps).start({ port: process.env.GRAPHQL_PORT, formatError: (error) => ({ ...error.originalError }) });;
+    graphQLServer = await new GraphQLServer(graphQLProps).start({
+      port: process.env.GRAPHQL_PORT,
+      formatError: (error: GraphQLError) => {
+        return error.originalError && { ...error.originalError } || error;
+      }
+    });
     console.log(`GraphQL server is running on http://${process.env.GRAPHQL_HOST}:${process.env.GRAPHQL_PORT}`);
   } catch (error) {
     await getConnection().close()

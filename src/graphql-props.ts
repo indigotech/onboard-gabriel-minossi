@@ -4,7 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from 'typeorm';
-import { encrypt } from './helpers';
+import { encrypt } from '@src/helpers';
 
 const typeDefs = `
 type Query {
@@ -142,7 +142,7 @@ const resolvers = {
         birthDate: user.birthDate,
         cpf: user.cpf,
       }
-      return userRepository.save(newUser);
+      return await userRepository.save(newUser);
     }
   },
 };
