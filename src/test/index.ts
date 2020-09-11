@@ -161,7 +161,7 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = sign({ id: -1 }, process.env.JWT_SECRET, { expiresIn: '2s' });
+      token = sign({}, process.env.JWT_SECRET, { expiresIn: '2s' });
 
     });
 
@@ -182,7 +182,7 @@ describe('GraphQL', () => {
     it('Logs in to an user account after creation', async () => {
       const { password, ... expectedUser } = { ...newUser };
 
-      const createdUser = (await createUser(token, newUser).body.data.createUser);
+      const createdUser = (await createUser(token, newUser)).body.data.createUser;
       const mutationUser = (await request.post('/')
         .send({
           query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { user { name email birthDate cpf } } }`,
@@ -415,7 +415,7 @@ describe('GraphQL', () => {
     beforeEach(async () => {
       await userRepository.save({ ...existingUser });
 
-      token = sign({ id: -1 }, process.env.JWT_SECRET, { expiresIn: '2s' });
+      token = sign({}, process.env.JWT_SECRET, { expiresIn: '2s' });
 
       existingUsersCount = await userRepository.count();
     });
@@ -463,6 +463,13 @@ describe('GraphQL', () => {
       it('Gets users from the end of the list', async () => {
         const count = existingUsersCount / 5 * 2 | 0;
         const skip = existingUsersCount / 5 * 4 | 0;
+
+        await verifyGetUsers(count, skip);
+      });
+
+      it('Gets users from beyond the end of the list', async () => {
+        const count = existingUsersCount / 5 * 2 | 0;
+        const skip = existingUsersCount + 1;
 
         await verifyGetUsers(count, skip);
       });
