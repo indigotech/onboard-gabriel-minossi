@@ -4,6 +4,7 @@ import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from 'typeorm';
+import { encrypt } from './test/helpers';
 
 const typeDefs = `
 type Query {
@@ -111,7 +112,7 @@ const resolvers = {
       const newUser = {
         name: user.name,
         email: user.email.toLowerCase(),
-        password: bcrypt.hashSync(user.password, bcrypt.genSaltSync(6)),
+        password: encrypt(user.password),
         birthDate: user.birthDate,
         cpf: user.cpf,
       }

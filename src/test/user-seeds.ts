@@ -3,6 +3,7 @@ import { setupTypeORM } from '@src/server-setup';
 import * as bcrypt from 'bcrypt';
 import * as faker from 'faker';
 import { getConnection, getRepository } from 'typeorm';
+import { encrypt } from './helpers';
 
 setupTypeORM().then(() => {
   const users: Partial<User>[] = [];
@@ -10,7 +11,7 @@ setupTypeORM().then(() => {
   for (let nUsers = 0; nUsers < 50; nUsers++) {
     const name = faker.name.firstName();
     const unencryptedPassword = faker.random.alphaNumeric(7);
-    const encryptedPassword = bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6));
+    const encryptedPassword = encrypt(unencryptedPassword);
     users.push({
       name,
       email: `${name}@domain.com`,

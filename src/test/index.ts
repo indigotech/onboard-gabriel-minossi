@@ -8,6 +8,7 @@ import { verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
 import * as supertest from 'supertest';
 import { getConnection, getRepository, Repository } from 'typeorm';
+import { encrypt } from './helpers';
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;
@@ -46,7 +47,7 @@ describe('GraphQL', () => {
     const testUser = {
       name: "test",
       email: "test-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
@@ -128,7 +129,7 @@ describe('GraphQL', () => {
     const existingUser: UserInput = {
       name: "existing",
       email: "existing-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
@@ -252,7 +253,7 @@ describe('GraphQL', () => {
     const existingUser: UserInput = {
       name: "existing",
       email: "existing-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
