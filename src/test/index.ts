@@ -14,12 +14,12 @@ describe('GraphQL', () => {
   let graphQLServer: HttpServer | HttpsServer;
 
   before(async () => {
-    request = supertest(process.env.URL);
+    request = supertest(`${process.env.GRAPHQL_HOST}:${process.env.GRAPHQL_PORT}`);
     [graphQLServer,] = await Promise.all([
       setupGraphQL(),
       setupTypeORM()
     ]);
-
+    console.log()
   });
 
   after(async () => {
@@ -71,6 +71,18 @@ describe('GraphQL', () => {
     afterEach(async () => {
       await userRepository.delete({ email: existingUser.email });
     });
+
+    it('Says hello :)', async () => {
+      try {
+        const response = await request.post('/')
+          .send({
+            query: `query hello`,
+          })
+      } catch (error) {
+        console.log(error);
+      }
+
+    })
 
     it(`Successfully returns a valid token for user with correct credentials`, async () => {
       const response = await login(correctCredentials);
@@ -260,7 +272,7 @@ describe('GraphQL', () => {
     const existingUser: Partial<User> = {
       name: "existing",
       email: "existing-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
