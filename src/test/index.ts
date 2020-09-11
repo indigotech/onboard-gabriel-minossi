@@ -1,33 +1,30 @@
-import { User } from "@src/entity/User";
-import { formatError } from '@src/error';
-import { graphQLServer } from '@src/graphql-setup';
+import { User } from '@src/entity/User';
+import { setupGraphQL, setupTypeORM } from '@src/server-setup';
 import * as bcrypt from 'bcrypt';
 import { expect } from 'chai';
-import * as dotenv from 'dotenv';
+import { Server as HttpServer } from 'http';
+import { Server as HttpsServer } from 'https';
 import { verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
-import 'reflect-metadata';
 import * as supertest from 'supertest';
-import { createConnection, getConnection, getRepository, Repository } from "typeorm";
-
-
-dotenv.config({ path: process.cwd() + '/.env.test' })
+import { getConnection, getRepository, Repository } from 'typeorm';
+import { encrypt } from './helpers';
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;
+  let graphQLServer: HttpServer | HttpsServer;
 
   before(async () => {
-    try {
-      await createConnection({ url: process.env.TYPEORM_URL, type: 'postgres', entities: [User] });
-      await graphQLServer.start({ port: process.env.PORT });
-      console.log(`Server is running on ${process.env.URL}`);
-      request = supertest(process.env.URL);
-    } catch (error) {
-      throw formatError(503, 'Are you sure the Docker database container is up?', error)
-    }
+    request = supertest(process.env.URL);
+    [graphQLServer,] = await Promise.all([
+      setupGraphQL(),
+      setupTypeORM()
+    ]);
+
   });
 
   after(async () => {
+    graphQLServer.close();
     await getConnection().close()
   });
 
@@ -50,7 +47,7 @@ describe('GraphQL', () => {
     const testUser = {
       name: "test",
       email: "test-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
@@ -132,7 +129,7 @@ describe('GraphQL', () => {
     const existingUser: UserInput = {
       name: "existing",
       email: "existing-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
@@ -256,7 +253,7 @@ describe('GraphQL', () => {
     const existingUser: UserInput = {
       name: "existing",
       email: "existing-email@example.com",
-      password: bcrypt.hashSync(unencryptedPassword, bcrypt.genSaltSync(6)),
+      password: encrypt(unencryptedPassword),
       birthDate: "01-01-1970",
       cpf: 28
     };
