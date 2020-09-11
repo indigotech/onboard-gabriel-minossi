@@ -83,10 +83,7 @@ const resolvers = {
       skip = skip || 0;
 
       const userRepository: Repository<User> = getRepository(User);
-      const [users, usersCount] = await Promise.all([
-        userRepository.find({ take: count, skip, order: { name: 'ASC' } }),
-        userRepository.count()
-      ]);
+      const [users, usersCount] = await userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
 
       const hasMore = usersCount - skip - count > 0;
 
