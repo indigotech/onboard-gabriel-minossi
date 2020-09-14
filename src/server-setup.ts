@@ -1,4 +1,4 @@
-import { formatError } from '@src/error';
+import { formatError, HttpError } from '@src/error';
 import { graphQLProps } from '@src/graphql-props';
 import * as dotenv from 'dotenv';
 import { GraphQLServer } from 'graphql-yoga';
@@ -17,18 +17,21 @@ export const setupTypeORM = async () => {
   try {
     await createConnection();
   } catch (error) {
-    throw formatError(503, 'Are you sure the Docker database container is up?', error)
+    throw new HttpError(503, 'Are you sure the Docker database container is up?', error)
   }
 }
 
 export const setupGraphQL = async (): Promise<HttpServer | HttpsServer> => {
   let graphQLServer
   try {
-    graphQLServer = await new GraphQLServer(graphQLProps).start({ port: process.env.GRAPHQL_PORT });;
+    graphQLServer = await new GraphQLServer(graphQLProps).start({
+      port: process.env.GRAPHQL_PORT,
+      formatError
+    });
+    console.log(`GraphQL server is running on http://${process.env.GRAPHQL_HOST}:${process.env.GRAPHQL_PORT}`);
   } catch (error) {
     await getConnection().close()
-    throw formatError(503, 'Couldn\'t create the GraphQL server, check if there\'s an already existent connection on port ' + process.env.GRAPHQL_PORT, error)
+    throw new HttpError(503, 'Couldn\'t create the GraphQL server, check if there\'s an already existent connection on port ' + process.env.GRAPHQL_PORT, error)
   }
-  console.log(`GraphQL server is running on http://${process.env.GRAPHQL_HOST}:${process.env.GRAPHQL_PORT}`);
   return graphQLServer;
 };

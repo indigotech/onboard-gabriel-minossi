@@ -1,10 +1,10 @@
 import { User } from '@src/entity/User';
-import { formatError } from '@src/error';
+import { HttpError } from '@src/error';
 import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from 'typeorm';
-import { encrypt } from './test/helpers';
+import { encrypt } from '@src/helpers';
 
 const typeDefs = `
 type Query {
@@ -50,13 +50,15 @@ type Users {
 const getVerification = (context: Context) => {
   const auth = context.request.get('Authorization')
   if (!auth) {
-    throw formatError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
+    throw new HttpError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
   }
 
   const token = auth.replace('Bearer ', '');
-
-  const verification = jwt.verify(token, process.env.JWT_SECRET);
-  return verification;
+  try {
+    return jwt.verify(token, process.env.JWT_SECRET);
+  } catch (error) {
+    throw new HttpError(401, 'Invalid token. Try loggin in again', error);
+  }
 };
 
 const resolvers = {
@@ -71,7 +73,7 @@ const resolvers = {
         user = await userRepository.findOneOrFail({ id });
 
       } catch (error) {
-        throw formatError(404, 'User not found');
+        throw new HttpError(404, 'User not found');
       }
       const { password, ...userReturn } = { ...user };
       return userReturn;
@@ -92,16 +94,18 @@ const resolvers = {
   },
   Mutation: {
     login: async (_, { email, password, rememberMe }) => {
+      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
+      if(!isValid(email)) {
+        throw new HttpError(400, 'Invalid email');
+      }
 
-      let user: User;
       const userRepository: Repository<User> = getRepository(User);
-      try {
-        user = await userRepository.findOneOrFail({ where: { email } });
-      } catch {
-        throw formatError(401, 'Invalid Credentials');
+      const user = await userRepository.findOne({ where: { email } });
+      if (!user) {
+        throw new HttpError(401, 'Invalid Credentials');
       }
       if (!bcrypt.compareSync(password, user.password)) {
-        throw formatError(401, 'Invalid Credentials');
+        throw new HttpError(401, 'Invalid Credentials');
       } else {
         const token = jwt.sign(
           { id: user.id },
@@ -118,17 +122,17 @@ const resolvers = {
       const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
 
       if (!isValid(user.email)) {
-        throw formatError(400, 'Invalid email');
+        throw new HttpError(400, 'Invalid email');
       }
       if (isWeak(user.password)) {
-        throw formatError(400, 'Password must be at least 7 characters long' +
+        throw new HttpError(400, 'Password must be at least 7 characters long' +
           'and must contain at last one letter and one digit')
       }
 
       const userRepository = getRepository(User);
 
       if (await userRepository.findOne({ where: { email: user.email } })) {
-        throw formatError(400, 'Email already in use');
+        throw new HttpError(400, 'Email already in use');
       }
 
       const newUser = {
