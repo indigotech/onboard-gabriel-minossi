@@ -54,13 +54,11 @@ const getVerification = (context: Context) => {
   }
 
   const token = auth.replace('Bearer ', '');
-  let verification;
   try {
-    verification = jwt.verify(token, process.env.JWT_SECRET);
+    return jwt.verify(token, process.env.JWT_SECRET);
   } catch (error) {
     throw new HttpError(401, 'Invalid token. Try loggin in again', error);
   }
-  return verification;
 };
 
 const resolvers = {
@@ -96,12 +94,14 @@ const resolvers = {
   },
   Mutation: {
     login: async (_, { email, password, rememberMe }) => {
+      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
+      if(!isValid(email)) {
+        throw new HttpError(400, 'Invalid email');
+      }
 
-      let user: User;
       const userRepository: Repository<User> = getRepository(User);
-      try {
-        user = await userRepository.findOneOrFail({ where: { email } });
-      } catch {
+      const user = await userRepository.findOne({ where: { email } });
+      if (!user) {
         throw new HttpError(401, 'Invalid Credentials');
       }
       if (!bcrypt.compareSync(password, user.password)) {
@@ -142,7 +142,7 @@ const resolvers = {
         birthDate: user.birthDate,
         cpf: user.cpf,
       }
-      return await userRepository.save(newUser);
+      return userRepository.save(newUser);
     }
   },
 };
