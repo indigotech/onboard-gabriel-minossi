@@ -1,5 +1,4 @@
 import { GraphQLError } from 'graphql';
-import { GraphQLServer } from 'graphql-yoga';
 
 export interface HttpError {
   code: number;
@@ -10,7 +9,7 @@ export interface HttpError {
 export class HttpError extends Error implements HttpError {
   code: number;
   message: string;
-  additionalInfo?: string
+  additionalInfo?: string;
 
   constructor(code: number, message: string, error?: Error) {
     super();
@@ -30,6 +29,6 @@ export const formatError = (error: GraphQLError) => {
       code: 500,
       message: error.name,
       additionalInfo: error.message,
-    }
+    };
   }
-}
+};

@@ -19,5 +19,7 @@ setupTypeORM().then(() => {
       cpf: faker.random.number(2147483648), // TODO: Change cpf to string
     });
   }
-  getRepository(User).save(users).then(() => getConnection().close());
+  getRepository(User)
+    .save(users)
+    .then(() => getConnection().close());
 });
