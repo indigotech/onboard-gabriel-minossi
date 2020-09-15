@@ -48,7 +48,7 @@ type Users {
 `;
 
 const getVerification = (context: Context) => {
-  const auth = context.request.get('Authorization')
+  const auth = context.request.get('Authorization');
   if (!auth) {
     throw new HttpError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
   }
@@ -68,15 +68,13 @@ const resolvers = {
       getVerification(context);
 
       const userRepository: Repository<User> = getRepository(User);
-      let user: User;
-      try {
-        user = await userRepository.findOneOrFail({ id });
-
-      } catch (error) {
+      const user = id && (await userRepository.findOne({ id }));
+      if (!user) {
         throw new HttpError(404, 'User not found');
       }
-      const { password, ...userReturn } = { ...user };
-      return userReturn;
+
+      delete user.password;
+      return user;
     },
     users: async (_, { count, skip }, context: Context) => {
       getVerification(context);
@@ -90,12 +88,12 @@ const resolvers = {
       const hasMore = usersCount - skip - count > 0;
 
       return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
-    }
+    },
   },
   Mutation: {
     login: async (_, { email, password, rememberMe }) => {
-      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
-      if(!isValid(email)) {
+      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
+      if (!isValid(email)) {
         throw new HttpError(400, 'Invalid email');
       }
 
@@ -107,26 +105,25 @@ const resolvers = {
       if (!bcrypt.compareSync(password, user.password)) {
         throw new HttpError(401, 'Invalid Credentials');
       } else {
-        const token = jwt.sign(
-          { id: user.id },
-          process.env.JWT_SECRET,
-          { expiresIn: rememberMe ? "1w" : "1h" }
-        );
-        return ({ user, token })
+        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '1w' : '1h' });
+        return { user, token };
       }
     },
     createUser: async (_, { user }, context: Context) => {
       getVerification(context);
 
-      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email)
-      const isWeak = (password: string): boolean => !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password))
+      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
+      const isWeak = (password: string): boolean =>
+        !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password));
 
       if (!isValid(user.email)) {
         throw new HttpError(400, 'Invalid email');
       }
       if (isWeak(user.password)) {
-        throw new HttpError(400, 'Password must be at least 7 characters long' +
-          'and must contain at last one letter and one digit')
+        throw new HttpError(
+          400,
+          'Password must be at least 7 characters long and must contain at last one letter and one digit',
+        );
       }
 
       const userRepository = getRepository(User);
@@ -141,14 +138,14 @@ const resolvers = {
         password: encrypt(user.password),
         birthDate: user.birthDate,
         cpf: user.cpf,
-      }
+      };
       return userRepository.save(newUser);
-    }
+    },
   },
 };
 
 export const graphQLProps = {
   typeDefs,
   resolvers,
-  context: request => request
+  context: (request) => request,
 };
