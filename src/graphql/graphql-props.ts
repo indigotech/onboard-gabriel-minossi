@@ -1,11 +1,10 @@
 import { User } from '@src/entity/User';
 import { HttpError } from '@src/error';
 import { encrypt } from '@src/helpers';
-import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from 'typeorm';
-import { HelloResolver } from './hello.resolver';
+import { UserResolver } from './user.resolver';
 
 const typeDefs = `
 type Query {
@@ -64,7 +63,7 @@ const getVerification = (context: Context) => {
 
 const resolvers = {
   Query: {
-    hello: () => 'Hello!',
+    hello: () => UserResolver.hello(),
     user: async (_, { id }, context: Context) => {
       getVerification(context);
 
@@ -92,24 +91,7 @@ const resolvers = {
     },
   },
   Mutation: {
-    login: async (_, { email, password, rememberMe }) => {
-      const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
-      if (!isValid(email)) {
-        throw new HttpError(400, 'Invalid email');
-      }
-
-      const userRepository: Repository<User> = getRepository(User);
-      const user = await userRepository.findOne({ where: { email } });
-      if (!user) {
-        throw new HttpError(401, 'Invalid Credentials');
-      }
-      if (!bcrypt.compareSync(password, user.password)) {
-        throw new HttpError(401, 'Invalid Credentials');
-      } else {
-        const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '1w' : '1h' });
-        return { user, token };
-      }
-    },
+    login: async (_, { email, password, rememberMe }) => UserResolver.login({ email, password, rememberMe }),
     createUser: async (_, { user }, context: Context) => {
       getVerification(context);
 
