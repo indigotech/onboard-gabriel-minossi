@@ -1,12 +1,13 @@
 import { User } from '@src/entity/User';
 import { HttpError } from '@src/error';
+import { encrypt } from '@src/helpers';
 import * as bcrypt from 'bcrypt';
+import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { Arg, Mutation, Query, Resolver } from 'type-graphql';
 import { getRepository, Repository } from 'typeorm';
 import { LoginInput } from './login.input';
 import { Login, LoginModel } from './login.type';
-import { Context } from 'graphql-yoga/dist/types';
 
 @Resolver()
 export class UserResolver {
@@ -79,4 +80,39 @@ export class UserResolver {
 
     return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
   }
+
+  public static async createUser({ user }, context: Context) {
+    this.getVerification(context);
+
+    const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
+    const isWeak = (password: string): boolean =>
+      !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password));
+
+    if (!isValid(user.email)) {
+      throw new HttpError(400, 'Invalid email');
+    }
+    if (isWeak(user.password)) {
+      throw new HttpError(
+        400,
+        'Password must be at least 7 characters long and must contain at last one letter and one digit',
+      );
+    }
+
+    const userRepository = getRepository(User);
+
+    if (await userRepository.findOne({ where: { email: user.email } })) {
+      throw new HttpError(400, 'Email already in use');
+    }
+
+    const newUser = {
+      name: user.name,
+      email: user.email.toLowerCase(),
+      password: encrypt(user.password),
+      birthDate: user.birthDate,
+      cpf: user.cpf,
+    };
+    return userRepository.save(newUser);
+  }
+
+
 }
