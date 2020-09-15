@@ -3,7 +3,7 @@ import { HttpError } from '@src/error';
 import { encrypt } from '@src/helpers';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
-import { getRepository, Repository } from 'typeorm';
+import { getRepository } from 'typeorm';
 import { UserResolver } from './user.resolver';
 
 const typeDefs = `
@@ -64,34 +64,11 @@ const getVerification = (context: Context) => {
 const resolvers = {
   Query: {
     hello: () => UserResolver.hello(),
-    user: async (_, { id }, context: Context) => {
-      getVerification(context);
-
-      const userRepository: Repository<User> = getRepository(User);
-      const user = id && (await userRepository.findOne({ id }));
-      if (!user) {
-        throw new HttpError(404, 'User not found');
-      }
-
-      delete user.password;
-      return user;
-    },
-    users: async (_, { count, skip }, context: Context) => {
-      getVerification(context);
-
-      count = count || 10;
-      skip = skip || 0;
-
-      const userRepository: Repository<User> = getRepository(User);
-      const [users, usersCount] = await userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
-
-      const hasMore = usersCount - skip - count > 0;
-
-      return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
-    },
+    user: (_, data, context: Context) => UserResolver.user(data, context),
+    users: (_, data, context: Context) => UserResolver.users(data, context),
   },
   Mutation: {
-    login: async (_, { email, password, rememberMe }) => UserResolver.login({ email, password, rememberMe }),
+    login: async (_, data) => UserResolver.login(data),
     createUser: async (_, { user }, context: Context) => {
       getVerification(context);
 
