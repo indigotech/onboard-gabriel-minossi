@@ -1,11 +1,11 @@
 import { formatError, HttpError } from '@src/error';
-import { graphQLProps } from '@src/graphql-props';
 import * as dotenv from 'dotenv';
 import { GraphQLServer } from 'graphql-yoga';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
 import 'reflect-metadata';
 import { createConnection, getConnection } from 'typeorm';
+import { graphQLProps } from './graphql/graphql-props';
 
 if (process.env.NODE_ENV === 'test') {
   dotenv.config({ path: `${process.cwd()}/.env.test` });

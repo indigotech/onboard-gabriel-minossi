@@ -1,10 +1,11 @@
 import { User } from '@src/entity/User';
 import { HttpError } from '@src/error';
+import { encrypt } from '@src/helpers';
 import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { getRepository, Repository } from 'typeorm';
-import { encrypt } from '@src/helpers';
+import { HelloResolver } from './hello.resolver';
 
 const typeDefs = `
 type Query {
