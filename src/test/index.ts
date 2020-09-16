@@ -59,7 +59,7 @@ describe('GraphQL', () => {
       email: 'test-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     const correctCredentials = {
       email: existingUser.email,
@@ -125,7 +125,7 @@ describe('GraphQL', () => {
       email: string;
       password: string;
       birthDate: string;
-      cpf: number;
+      cpf: string;
     }
 
     const createUser = (token: string, user: CreateUserInput) => {
@@ -148,14 +148,14 @@ describe('GraphQL', () => {
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     const newUser: CreateUserInput = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
 
     before(() => {
@@ -272,7 +272,7 @@ describe('GraphQL', () => {
       email: string;
       password: string;
       birthDate: string;
-      cpf: number;
+      cpf: string;
     }
 
     const getUser = (token: string, id: string) => {
@@ -290,14 +290,14 @@ describe('GraphQL', () => {
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     const newUser: CreateUserInput = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
 
     before(() => {
@@ -408,7 +408,7 @@ describe('GraphQL', () => {
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     // const newUser: CreateUserInput = {
     //   name: 'new',
@@ -434,14 +434,12 @@ describe('GraphQL', () => {
       await userRepository.delete({ email: existingUser.email });
     });
 
-    it('Gets users', async () => {
-      await verifyGetUsers();
+    it('Gets one user', async () => {
+      await verifyGetUsers(1);
     });
 
     it(`Gets all users`, async () => {
-      const count = existingUsersCount;
-
-      await verifyGetUsers(count);
+      await verifyGetUsers(existingUsersCount);
     });
 
     it(`Fails to get users without a valid token`, async () => {
@@ -455,29 +453,31 @@ describe('GraphQL', () => {
     });
 
     describe('Pagination', () => {
+      const pageSize = 50;
+
       it('Gets users from the beggining of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
+        const count = pageSize;
         const skip = 0;
 
         await verifyGetUsers(count, skip);
       });
 
       it('Gets users from the middle of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
-        const skip = ((existingUsersCount / 5) * 2) | 0;
+        const count = pageSize;
+        const skip = pageSize;
 
         await verifyGetUsers(count, skip);
       });
 
       it('Gets users from the end of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
-        const skip = ((existingUsersCount / 5) * 4) | 0;
+        const count = pageSize;
+        const skip = existingUsersCount - pageSize / 2;
 
         await verifyGetUsers(count, skip);
       });
 
       it('Gets users from beyond the end of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
+        const count = pageSize;
         const skip = existingUsersCount + 1;
 
         await verifyGetUsers(count, skip);

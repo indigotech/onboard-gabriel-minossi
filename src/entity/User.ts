@@ -18,5 +18,5 @@ export class User {
   birthDate: string;
 
   @Column()
-  cpf: number;
+  cpf: string;
 }

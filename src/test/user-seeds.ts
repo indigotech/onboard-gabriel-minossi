@@ -16,7 +16,7 @@ setupTypeORM().then(() => {
       email: `${name}@domain.com`,
       password: encryptedPassword,
       birthDate: `${faker.date.past()}`,
-      cpf: faker.random.number(2147483648), // TODO: Change cpf to string
+      cpf: faker.random.number(99999999999).toString(),
     });
   }
   getRepository(User)
