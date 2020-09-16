@@ -38,7 +38,7 @@ export class UserResolver {
   }
 
   @Mutation(() => Login, { description: 'Authenticate' })
-  async login(@Arg('data', () => LoginInput) { email, password, rememberMe = false }): Promise<LoginModel> {
+  async login(@Arg('data') { email, password, rememberMe }: LoginInput): Promise<LoginModel> {
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
     if (!isValid(email)) {
       throw new HttpError(400, 'Invalid email');
@@ -70,7 +70,7 @@ export class UserResolver {
   }
 
   @Query(() => Users)
-  async users(@Arg('data', () => UsersInput) { count, skip = 0 }, @Ctx() context: Context) {
+  async users(@Arg('data') { count, skip = 0 }: UsersInput, @Ctx() context: Context) {
     this.getVerification(context);
 
     const [users, usersCount] = await this.userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
@@ -81,10 +81,7 @@ export class UserResolver {
   }
 
   @Mutation(() => User)
-  async createUser(
-    @Arg('data', () => CreateUserInput) { name, email, password, birthDate, cpf },
-    @Ctx() context: Context,
-  ) {
+  async createUser(@Arg('data') { name, email, password, birthDate, cpf }: CreateUserInput, @Ctx() context: Context) {
     this.getVerification(context);
 
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);

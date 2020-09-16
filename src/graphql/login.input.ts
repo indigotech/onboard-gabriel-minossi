@@ -8,6 +8,6 @@ export class LoginInput {
   @Field({ description: 'Senha' })
   password: string;
 
-  @Field({ description: 'Extender a validade do token', nullable: true, defaultValue: false })
+  @Field({ description: 'Extender a validade do token', defaultValue: false })
   rememberMe?: boolean;
 }
