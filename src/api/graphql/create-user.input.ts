@@ -1,4 +1,4 @@
-import { UserInputModel } from '@src/model/user.model';
+import { UserInputModel } from '@src/business/model/user.model';
 import { Field, InputType } from 'type-graphql';
 
 @InputType({ description: 'Objeto de entrada para a criação de um novo usuário' })

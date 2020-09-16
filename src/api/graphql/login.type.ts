@@ -1,4 +1,4 @@
-import { LoginModel } from '@src/model/user.model';
+import { LoginModel } from '@src/business/model/user.model';
 import { Field, ObjectType } from 'type-graphql';
 import { User } from './user.type';
 

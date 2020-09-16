@@ -1,5 +1,5 @@
+import { User } from '@src/api/graphql/user.type';
 import { Field, Int, ObjectType } from 'type-graphql';
-import { User } from './user.type';
 
 @ObjectType({ description: 'Objeto de retorno de users' })
 export class Users {

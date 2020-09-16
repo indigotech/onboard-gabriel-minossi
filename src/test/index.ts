@@ -1,8 +1,9 @@
-import { CreateUserInput } from '@src/graphql/create-user.input';
-import { LoginInput } from '@src/graphql/login.input';
+import { CreateUserInput } from '@src/api/graphql/create-user.input';
+import { LoginInput } from '@src/api/graphql/login.input';
+import { setupGraphQL } from '@src/api/server-setup';
+import { setupTypeORM } from '@src/data/database-setup';
+import { User } from '@src/data/entity/User';
 import { encrypt } from '@src/helpers';
-import { setupGraphQL, setupTypeORM } from '@src/server-setup';
-import { User } from '@src/typeorm/entity/User';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
