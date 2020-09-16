@@ -1,44 +1,20 @@
-import { User } from '@src/entity/User';
+import { User as RepositoryUser } from '@src/entity/User';
 import { HttpError } from '@src/error';
+import { User, Users } from '@src/graphql/user.type';
 import { encrypt } from '@src/helpers';
 import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
-import { Arg, Mutation, Query, Resolver } from 'type-graphql';
-import { getRepository, Repository } from 'typeorm';
-import { LoginInput } from './login.input';
+import { Arg, Ctx, ID, Int, Mutation, Query, Resolver } from 'type-graphql';
+import { getRepository } from 'typeorm';
 import { Login, LoginModel } from './login.type';
+import { UserInput } from './user.input';
 
-@Resolver()
+@Resolver(() => User)
 export class UserResolver {
-  @Query(() => String)
-  public static hello() {
-    return 'Hello!';
-  }
+  private userRepository = getRepository(RepositoryUser);
 
-  @Mutation(() => Login, { description: 'Authenticate' })
-  public static async login(@Arg('data') data: LoginInput): Promise<LoginModel> {
-    const { email, password, rememberMe } = data;
-
-    const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
-    if (!isValid(email)) {
-      throw new HttpError(400, 'Invalid email');
-    }
-
-    const userRepository: Repository<User> = getRepository(User);
-    const user = await userRepository.findOne({ where: { email } });
-    if (!user) {
-      throw new HttpError(401, 'Invalid Credentials');
-    }
-    if (!bcrypt.compareSync(password, user.password)) {
-      throw new HttpError(401, 'Invalid Credentials');
-    }
-
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '1w' : '1h' });
-    return { user, token };
-  }
-
-  private static getVerification(context: Context) {
+  private getVerification(context: Context) {
     const auth = context.request.get('Authorization');
     if (!auth) {
       throw new HttpError(401, 'You must be logged in', new jwt.JsonWebTokenError(''));
@@ -52,12 +28,39 @@ export class UserResolver {
     }
   }
 
+  @Query(() => String)
+  hello() {
+    return 'Hello!';
+  }
+
+  @Mutation(() => Login, { description: 'Authenticate' })
+  async login(
+    @Arg('email') email: string,
+    @Arg('password') password: string,
+    @Arg('rememberMe', { nullable: true }) rememberMe?: boolean,
+  ): Promise<LoginModel> {
+    const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
+    if (!isValid(email)) {
+      throw new HttpError(400, 'Invalid email');
+    }
+
+    const user = await this.userRepository.findOne({ where: { email } });
+    if (!user) {
+      throw new HttpError(401, 'Invalid Credentials');
+    }
+    if (!bcrypt.compareSync(password, user.password)) {
+      throw new HttpError(401, 'Invalid Credentials');
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET, { expiresIn: rememberMe ? '1w' : '1h' });
+    return { user, token };
+  }
+
   @Query(() => User)
-  public static async user({ id }, context: Context) {
+  async user(@Arg('id', () => ID) id: string, @Ctx() context: Context) {
     this.getVerification(context);
 
-    const userRepository: Repository<User> = getRepository(User);
-    const user = id && (await userRepository.findOne({ id }));
+    const user = id && (await this.userRepository.findOne({ id }));
     if (!user) {
       throw new HttpError(404, 'User not found');
     }
@@ -66,22 +69,23 @@ export class UserResolver {
     return user;
   }
 
-  @Query(() => [User])
-  public static async users({ count, skip }, context: Context) {
+  @Query(() => Users)
+  async users(
+    @Arg('count', () => Int, { nullable: true, defaultValue: 10 }) count: number,
+    @Arg('skip', () => Int, { nullable: true, defaultValue: 0 }) skip: number,
+    @Ctx() context: Context,
+  ) {
     this.getVerification(context);
 
-    count = count || 10;
-    skip = skip || 0;
-
-    const userRepository: Repository<User> = getRepository(User);
-    const [users, usersCount] = await userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
+    const [users, usersCount] = await this.userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
 
     const hasMore = usersCount - skip - count > 0;
 
     return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
   }
 
-  public static async createUser({ user }, context: Context) {
+  @Mutation(() => User)
+  async createUser(@Arg('user') user: UserInput, @Ctx() context: Context) {
     this.getVerification(context);
 
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
@@ -98,9 +102,7 @@ export class UserResolver {
       );
     }
 
-    const userRepository = getRepository(User);
-
-    if (await userRepository.findOne({ where: { email: user.email } })) {
+    if (await this.userRepository.findOne({ where: { email: user.email } })) {
       throw new HttpError(400, 'Email already in use');
     }
 
@@ -111,8 +113,6 @@ export class UserResolver {
       birthDate: user.birthDate,
       cpf: user.cpf,
     };
-    return userRepository.save(newUser);
+    return this.userRepository.save(newUser);
   }
-
-
 }
