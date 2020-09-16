@@ -1,11 +1,10 @@
-import { UsersInputModel } from '@src/model/user.model';
 import { Field, InputType, Int } from 'type-graphql';
 
 @InputType()
-export class UsersInput implements UsersInputModel {
-  @Field(() => Int, { description: 'User name' })
+export class UsersInput {
+  @Field(() => Int, { description: 'User name', nullable: true })
   count: number;
 
-  @Field(() => Int, { description: 'User name' })
+  @Field(() => Int, { description: 'User name', nullable: true })
   skip: number;
 }

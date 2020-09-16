@@ -1,6 +1,8 @@
-import { User } from '@src/typeorm/entity/User';
+import { CreateUserInput } from '@src/graphql/create-user.input';
+import { LoginInput } from '@src/graphql/login.input';
 import { encrypt } from '@src/helpers';
 import { setupGraphQL, setupTypeORM } from '@src/server-setup';
+import { User } from '@src/typeorm/entity/User';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
@@ -8,7 +10,6 @@ import { sign, verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
 import * as supertest from 'supertest';
 import { getConnection, getRepository, Repository } from 'typeorm';
-import { UserInputModel } from '@src/model/user.model';
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;
@@ -41,21 +42,16 @@ describe('GraphQL', () => {
   });
 
   describe('Login', () => {
-    interface LoginInput {
-      email: string;
-      password: string;
-    }
-
     const login = (credentials: LoginInput) => {
       return request.post('/').send({
-        query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf } } }`,
-        variables: { email: credentials.email, password: credentials.password },
+        query: `mutation login($data: LoginInput!) { login(data: $data) { token user { id name email birthDate cpf } } }`,
+        variables: { data: { email: credentials.email, password: credentials.password } },
       });
     };
 
     let userRepository: Repository<User>;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: UserInputModel = {
+    const existingUser: CreateUserInput = {
       name: 'test',
       email: 'test-email@example.com',
       password: encrypt(unencryptedPassword),
@@ -121,29 +117,29 @@ describe('GraphQL', () => {
   });
 
   describe('Create User', () => {
-    const createUser = (token: string, user: UserInputModel) => {
-      const newUser = { ...user };
-
+    const createUser = (token: string, user: CreateUserInput) => {
       return request
         .post('/')
         .auth(token, { type: 'bearer' })
         .send({
-          query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
-          variables: { user: newUser },
+          query: `mutation createUser($data: CreateUserInput!) { createUser(data: $data) { id name email birthDate cpf } }`,
+          variables: {
+            data: { ...user },
+          },
         });
     };
 
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: UserInputModel = {
+    const existingUser: CreateUserInput = {
       name: 'existing',
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
       cpf: '28',
     };
-    const newUser: UserInputModel = {
+    const newUser: CreateUserInput = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
@@ -183,8 +179,8 @@ describe('GraphQL', () => {
       const createdUser = (await createUser(token, newUser)).body.data.createUser;
       const mutationUser = (
         await request.post('/').send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { user { name email birthDate cpf } } }`,
-          variables: { email: createdUser.email, password: unencryptedPassword },
+          query: `mutation login($data: LoginInput!) { login(data: $data) { user { name email birthDate cpf } } }`,
+          variables: { data: { email: createdUser.email, password: unencryptedPassword } },
         })
       ).body.data.login.user;
 
@@ -270,14 +266,14 @@ describe('GraphQL', () => {
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: UserInputModel = {
+    const existingUser: CreateUserInput = {
       name: 'existing',
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
       cpf: '28',
     };
-    const newUser: UserInputModel = {
+    const newUser: CreateUserInput = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
@@ -350,9 +346,9 @@ describe('GraphQL', () => {
     }
 
     const getUsers = (token: string, input?: UsersInput) => {
-      const variables = input || null;
+      const variables = { data: { ...input } };
       return request.post('/').auth(token, { type: 'bearer' }).send({
-        query: `query getUsers($count: Int, $skip: Int) { users(count: $count, skip: $skip) { hasMore users { id name email birthDate cpf } } }`,
+        query: `query getUsers($data: UsersInput!) { users(data: $data) { hasMore users { id name email birthDate cpf } } }`,
         variables,
       });
     };
@@ -364,11 +360,8 @@ describe('GraphQL', () => {
       });
 
     const verifyGetUsers = async (count?: number, skip?: number) => {
-      count = count || null;
-      skip = skip || null;
-
       const [databaseUsers, getUsersResponse] = await Promise.all([
-        userRepository.find({ take: count || 10, skip, order: { name: 'ASC' } }),
+        userRepository.find({ take: count, skip, order: { name: 'ASC' } }),
         getUsers(token, { count, skip }),
       ]);
       const expectedUsers = parseDatabaseUsers(databaseUsers);
@@ -411,8 +404,8 @@ describe('GraphQL', () => {
       await userRepository.delete({ email: existingUser.email });
     });
 
-    it('Gets one user', async () => {
-      await verifyGetUsers(1);
+    it('Gets users', async () => {
+      await verifyGetUsers();
     });
 
     it(`Gets all users`, async () => {

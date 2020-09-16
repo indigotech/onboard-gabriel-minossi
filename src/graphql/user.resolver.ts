@@ -6,10 +6,12 @@ import { User as RepositoryUser } from '@src/typeorm/entity/User';
 import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
-import { Arg, Ctx, ID, Int, Mutation, Query, Resolver } from 'type-graphql';
+import { Arg, Ctx, ID, Mutation, Query, Resolver } from 'type-graphql';
 import { getRepository } from 'typeorm';
+import { CreateUserInput } from './create-user.input';
+import { LoginInput } from './login.input';
 import { Login } from './login.type';
-import { UserInput } from './user.input';
+import { UsersInput } from './users.input';
 import { Users } from './users.type';
 
 @Resolver(() => User)
@@ -36,11 +38,7 @@ export class UserResolver {
   }
 
   @Mutation(() => Login, { description: 'Authenticate' })
-  async login(
-    @Arg('email') email: string,
-    @Arg('password') password: string,
-    @Arg('rememberMe', { nullable: true }) rememberMe?: boolean,
-  ): Promise<LoginModel> {
+  async login(@Arg('data', () => LoginInput) { email, password, rememberMe = false }): Promise<LoginModel> {
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
     if (!isValid(email)) {
       throw new HttpError(400, 'Invalid email');
@@ -72,11 +70,7 @@ export class UserResolver {
   }
 
   @Query(() => Users)
-  async users(
-    @Arg('count', () => Int, { nullable: true, defaultValue: 10 }) count: number,
-    @Arg('skip', () => Int, { nullable: true, defaultValue: 0 }) skip: number,
-    @Ctx() context: Context,
-  ) {
+  async users(@Arg('data', () => UsersInput) { count, skip }, @Ctx() context: Context) {
     this.getVerification(context);
 
     const [users, usersCount] = await this.userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
@@ -87,33 +81,36 @@ export class UserResolver {
   }
 
   @Mutation(() => User)
-  async createUser(@Arg('user') user: UserInput, @Ctx() context: Context) {
+  async createUser(
+    @Arg('data', () => CreateUserInput) { name, email, password, birthDate, cpf },
+    @Ctx() context: Context,
+  ) {
     this.getVerification(context);
 
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
     const isWeak = (password: string): boolean =>
       !(password.length >= 7 && /^.*(([A-Z].*[a-z])|([a-z].*[A-Z]))+.*$/.test(password));
 
-    if (!isValid(user.email)) {
+    if (!isValid(email)) {
       throw new HttpError(400, 'Invalid email');
     }
-    if (isWeak(user.password)) {
+    if (isWeak(password)) {
       throw new HttpError(
         400,
         'Password must be at least 7 characters long and must contain at last one letter and one digit',
       );
     }
 
-    if (await this.userRepository.findOne({ where: { email: user.email } })) {
+    if (await this.userRepository.findOne({ where: { email: email } })) {
       throw new HttpError(400, 'Email already in use');
     }
 
     const newUser = {
-      name: user.name,
-      email: user.email.toLowerCase(),
-      password: encrypt(user.password),
-      birthDate: user.birthDate,
-      cpf: user.cpf,
+      name: name,
+      email: email.toLowerCase(),
+      password: encrypt(password),
+      birthDate: birthDate,
+      cpf: cpf,
     };
     return this.userRepository.save(newUser);
   }

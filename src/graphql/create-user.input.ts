@@ -2,7 +2,7 @@ import { UserInputModel } from '@src/model/user.model';
 import { Field, InputType } from 'type-graphql';
 
 @InputType()
-export class UserInput implements UserInputModel {
+export class CreateUserInput implements UserInputModel {
   @Field({ description: 'User name' })
   name: string;
 

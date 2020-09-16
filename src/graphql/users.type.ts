@@ -1,9 +1,8 @@
-import { UsersModel } from '@src/model/user.model';
 import { Field, Int, ObjectType } from 'type-graphql';
 import { User } from './user.type';
 
 @ObjectType()
-export class Users implements UsersModel {
+export class Users {
   @Field(() => [User], { description: 'User id' })
   users: User[];
 
