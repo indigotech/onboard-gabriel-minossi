@@ -359,7 +359,7 @@ describe('GraphQL', () => {
         return user;
       });
 
-    const verifyGetUsers = async (count?: number, skip?: number) => {
+    const verifyGetUsers = async (count = 10, skip?: number) => {
       const [databaseUsers, getUsersResponse] = await Promise.all([
         userRepository.find({ take: count, skip, order: { name: 'ASC' } }),
         getUsers(token, { count, skip }),

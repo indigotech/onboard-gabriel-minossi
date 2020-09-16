@@ -70,7 +70,7 @@ export class UserResolver {
   }
 
   @Query(() => Users)
-  async users(@Arg('data', () => UsersInput) { count, skip }, @Ctx() context: Context) {
+  async users(@Arg('data', () => UsersInput) { count, skip = 0 }, @Ctx() context: Context) {
     this.getVerification(context);
 
     const [users, usersCount] = await this.userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
