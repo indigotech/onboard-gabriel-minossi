@@ -1,10 +1,6 @@
+import { LoginModel } from '@src/model/user.model';
 import { Field, ObjectType } from 'type-graphql';
 import { User } from './user.type';
-
-export interface LoginModel {
-  token: string;
-  user: User;
-}
 
 @ObjectType({ description: 'Login response object' })
 export class Login implements LoginModel {

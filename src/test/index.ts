@@ -1,4 +1,4 @@
-import { User } from '@src/entity/User';
+import { User } from '@src/typeorm/entity/User';
 import { encrypt } from '@src/helpers';
 import { setupGraphQL, setupTypeORM } from '@src/server-setup';
 import { expect } from 'chai';
@@ -8,6 +8,7 @@ import { sign, verify as verifyToken } from 'jsonwebtoken';
 import { it } from 'mocha';
 import * as supertest from 'supertest';
 import { getConnection, getRepository, Repository } from 'typeorm';
+import { UserInputModel } from '@src/model/user.model';
 
 describe('GraphQL', () => {
   let request: supertest.SuperTest<supertest.Test>;
@@ -54,7 +55,7 @@ describe('GraphQL', () => {
 
     let userRepository: Repository<User>;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: Partial<User> = {
+    const existingUser: UserInputModel = {
       name: 'test',
       email: 'test-email@example.com',
       password: encrypt(unencryptedPassword),
@@ -120,15 +121,7 @@ describe('GraphQL', () => {
   });
 
   describe('Create User', () => {
-    interface CreateUserInput {
-      name: string;
-      email: string;
-      password: string;
-      birthDate: string;
-      cpf: string;
-    }
-
-    const createUser = (token: string, user: CreateUserInput) => {
+    const createUser = (token: string, user: UserInputModel) => {
       const newUser = { ...user };
 
       return request
@@ -143,14 +136,14 @@ describe('GraphQL', () => {
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: Partial<User> = {
+    const existingUser: UserInputModel = {
       name: 'existing',
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
       cpf: '28',
     };
-    const newUser: CreateUserInput = {
+    const newUser: UserInputModel = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
@@ -199,7 +192,7 @@ describe('GraphQL', () => {
     });
 
     it('Fails to create a new user with an already registered email', async () => {
-      const createUserResponse = await createUser(token, existingUser as CreateUserInput);
+      const createUserResponse = await createUser(token, existingUser);
 
       expect(createUserResponse.body).to.have.property('errors');
       expect(createUserResponse.body.errors[0].code).to.equal(400);
@@ -267,14 +260,6 @@ describe('GraphQL', () => {
   });
 
   describe('Get User', () => {
-    interface CreateUserInput {
-      name: string;
-      email: string;
-      password: string;
-      birthDate: string;
-      cpf: string;
-    }
-
     const getUser = (token: string, id: string) => {
       return request.post('/').auth(token, { type: 'bearer' }).send({
         query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
@@ -285,14 +270,14 @@ describe('GraphQL', () => {
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: Partial<User> = {
+    const existingUser: UserInputModel = {
       name: 'existing',
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
       cpf: '28',
     };
-    const newUser: CreateUserInput = {
+    const newUser: UserInputModel = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
@@ -359,14 +344,6 @@ describe('GraphQL', () => {
   });
 
   describe('Get Users', () => {
-    interface CreateUserInput {
-      name: string;
-      email: string;
-      password: string;
-      birthDate: string;
-      cpf: number;
-    }
-
     interface UsersInput {
       count?: number;
       skip?: number;

@@ -1,14 +1,16 @@
-import { User as RepositoryUser } from '@src/entity/User';
 import { HttpError } from '@src/error';
-import { User, Users } from '@src/graphql/user.type';
+import { User } from '@src/graphql/user.type';
 import { encrypt } from '@src/helpers';
+import { LoginModel } from '@src/model/user.model';
+import { User as RepositoryUser } from '@src/typeorm/entity/User';
 import * as bcrypt from 'bcrypt';
 import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 import { Arg, Ctx, ID, Int, Mutation, Query, Resolver } from 'type-graphql';
 import { getRepository } from 'typeorm';
-import { Login, LoginModel } from './login.type';
+import { Login } from './login.type';
 import { UserInput } from './user.input';
+import { Users } from './users.type';
 
 @Resolver(() => User)
 export class UserResolver {

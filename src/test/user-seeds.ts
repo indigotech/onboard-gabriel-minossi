@@ -1,4 +1,4 @@
-import { User } from '@src/entity/User';
+import { User } from '@src/typeorm/entity/User';
 import { encrypt } from '@src/helpers';
 import { setupTypeORM } from '@src/server-setup';
 import * as faker from 'faker';

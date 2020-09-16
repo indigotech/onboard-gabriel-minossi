@@ -1,12 +1,5 @@
+import { UserInputModel } from '@src/model/user.model';
 import { Field, InputType } from 'type-graphql';
-
-export interface UserInputModel {
-  name: string;
-  email: string;
-  password: string;
-  birthDate: string;
-  cpf: string;
-}
 
 @InputType()
 export class UserInput implements UserInputModel {

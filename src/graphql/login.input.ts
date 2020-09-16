@@ -1,10 +1,5 @@
+import { LoginInputModel } from '@src/model/user.model';
 import { Field, InputType } from 'type-graphql';
-
-export interface LoginInputModel {
-  email: string;
-  password: string;
-  rememberMe?: boolean;
-}
 
 @InputType({ description: 'Informações para realizar login' })
 export class LoginInput implements LoginInputModel {

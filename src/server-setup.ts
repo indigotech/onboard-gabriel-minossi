@@ -4,8 +4,9 @@ import { GraphQLServer } from 'graphql-yoga';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
 import 'reflect-metadata';
+import { buildSchemaSync } from 'type-graphql';
 import { createConnection, getConnection } from 'typeorm';
-import { graphQLProps } from './graphql/graphql-props';
+import { UserResolver } from './graphql/user.resolver';
 
 if (process.env.NODE_ENV === 'test') {
   dotenv.config({ path: `${process.cwd()}/.env.test` });
@@ -22,9 +23,12 @@ export const setupTypeORM = async () => {
 };
 
 export const setupGraphQL = async (): Promise<HttpServer | HttpsServer> => {
-  let graphQLServer;
+  let graphQLServer: HttpServer | HttpsServer;
   try {
-    graphQLServer = await new GraphQLServer(graphQLProps).start({
+    graphQLServer = await new GraphQLServer({
+      schema: buildSchemaSync({ resolvers: [UserResolver], validate: false }),
+      context: (request) => request,
+    }).start({
       port: process.env.GRAPHQL_PORT,
       formatError,
     });
