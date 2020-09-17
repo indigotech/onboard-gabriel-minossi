@@ -6,11 +6,12 @@ import { UserDbDataSource } from '@src/data/source/user.db.datasource';
 import { HttpError } from '@src/error';
 import * as bcrypt from 'bcrypt';
 import * as jwt from 'jsonwebtoken';
-import { Container, Service } from 'typedi';
+import { Inject, Service } from 'typedi';
 
 @Service()
 export class LoginUseCase extends UseCase<LoginInput, LoginModel> {
-  protected readonly dataSource = Container.get(UserDbDataSource);
+  @Inject()
+  protected readonly dataSource: UserDbDataSource;
 
   async exec(input: LoginInput): Promise<LoginModel> {
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);

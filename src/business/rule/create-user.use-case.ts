@@ -3,11 +3,12 @@ import { UseCase } from '@src/business/rule/use-case';
 import { UserDbDataSource } from '@src/data/source/user.db.datasource';
 import { HttpError } from '@src/error';
 import { encrypt } from '@src/helpers';
-import { Container, Service } from 'typedi';
+import { Inject, Service } from 'typedi';
 
 @Service()
 export class CreateUserUseCase extends UseCase<UserInputModel, UserModel> {
-  protected readonly dataSource = Container.get(UserDbDataSource);
+  @Inject()
+  protected readonly dataSource: UserDbDataSource;
 
   async exec(input: UserInputModel): Promise<UserModel> {
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);

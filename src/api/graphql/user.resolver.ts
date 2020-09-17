@@ -9,15 +9,17 @@ import { LoginUseCase } from '@src/business/rule/login.use-case';
 import { UserUseCase } from '@src/business/rule/user.use-case';
 import { UsersUseCase } from '@src/business/rule/users.use-case';
 import { Arg, Authorized, ID, Mutation, Query, Resolver } from 'type-graphql';
-import { Container, Service } from 'typedi';
+import { Service } from 'typedi';
 
 @Service()
 @Resolver(() => User)
 export class UserResolver {
-  private loginUseCase = Container.get(LoginUseCase);
-  private userUseCase = Container.get(UserUseCase);
-  private usersUseCase = Container.get(UsersUseCase);
-  private createUserUseCase = Container.get(CreateUserUseCase);
+  constructor(
+    private loginUseCase: LoginUseCase,
+    private userUseCase: UserUseCase,
+    private usersUseCase: UsersUseCase,
+    private createUserUseCase: CreateUserUseCase,
+  ) {}
 
   @Query(() => String, { description: 'Query básica de hello world' })
   hello() {
