@@ -4,7 +4,7 @@
    "description": "Meu primeiro contato com a Taqtile :)",
    "main": "index.js",
    "scripts": {
-      "test": "NODE_ENV=test mocha -r reflect-metadata -r tsconfig-paths/register -r ts-node/register src/test/index.ts",
+      "test": "NODE_ENV=test mocha -r reflect-metadata -r tsconfig-paths/register -r ts-node/register src/index.ts",
       "start": "ts-node -r reflect-metadata -r tsconfig-paths/register src/index.ts",
       "seeds": "ts-node -r tsconfig-paths/register src/test/user-seeds.ts",
       "test-seeds": "NODE_ENV=test ts-node -r tsconfig-paths/register src/test/user-seeds.ts"
