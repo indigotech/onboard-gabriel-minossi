@@ -1,6 +1,8 @@
-import { User } from '@src/entity/User';
+import { CreateUserInput } from '@src/graphql/create-user.input';
+import { LoginInput } from '@src/graphql/login.input';
 import { encrypt } from '@src/helpers';
 import { setupGraphQL, setupTypeORM } from '@src/server-setup';
+import { User } from '@src/typeorm/entity/User';
 import { expect } from 'chai';
 import { Server as HttpServer } from 'http';
 import { Server as HttpsServer } from 'https';
@@ -29,9 +31,15 @@ describe('GraphQL', () => {
     it('Says hello :)', async () => {
       let helloResponse;
       try {
-        helloResponse = await request.post('/').send({
-          query: `query hello { hello }`,
-        });
+        helloResponse = await request
+          .post('/')
+          .send({
+            query: `query hello { hello }`,
+          })
+          .then((response) => {
+            console.log(response.body);
+            return response;
+          });
       } catch (error) {
         console.log(error);
       }
@@ -40,26 +48,21 @@ describe('GraphQL', () => {
   });
 
   describe('Login', () => {
-    interface LoginInput {
-      email: string;
-      password: string;
-    }
-
     const login = (credentials: LoginInput) => {
       return request.post('/').send({
-        query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { token user { id name email birthDate cpf } } }`,
-        variables: { email: credentials.email, password: credentials.password },
+        query: `mutation login($data: LoginInput!) { login(data: $data) { token user { id name email birthDate cpf } } }`,
+        variables: { data: { email: credentials.email, password: credentials.password } },
       });
     };
 
     let userRepository: Repository<User>;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: Partial<User> = {
+    const existingUser: CreateUserInput = {
       name: 'test',
       email: 'test-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     const correctCredentials = {
       email: existingUser.email,
@@ -120,42 +123,34 @@ describe('GraphQL', () => {
   });
 
   describe('Create User', () => {
-    interface CreateUserInput {
-      name: string;
-      email: string;
-      password: string;
-      birthDate: string;
-      cpf: number;
-    }
-
     const createUser = (token: string, user: CreateUserInput) => {
-      const newUser = { ...user };
-
       return request
         .post('/')
         .auth(token, { type: 'bearer' })
         .send({
-          query: `mutation createUser($user: UserInput!) { createUser(user: $user) { id name email birthDate cpf } }`,
-          variables: { user: newUser },
+          query: `mutation createUser($data: CreateUserInput!) { createUser(data: $data) { id name email birthDate cpf } }`,
+          variables: {
+            data: { ...user },
+          },
         });
     };
 
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: Partial<User> = {
+    const existingUser: CreateUserInput = {
       name: 'existing',
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     const newUser: CreateUserInput = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
 
     before(() => {
@@ -190,8 +185,8 @@ describe('GraphQL', () => {
       const createdUser = (await createUser(token, newUser)).body.data.createUser;
       const mutationUser = (
         await request.post('/').send({
-          query: `mutation login($email: String!, $password: String!) { login(email: $email, password: $password) { user { name email birthDate cpf } } }`,
-          variables: { email: createdUser.email, password: unencryptedPassword },
+          query: `mutation login($data: LoginInput!) { login(data: $data) { user { name email birthDate cpf } } }`,
+          variables: { data: { email: createdUser.email, password: unencryptedPassword } },
         })
       ).body.data.login.user;
 
@@ -199,7 +194,7 @@ describe('GraphQL', () => {
     });
 
     it('Fails to create a new user with an already registered email', async () => {
-      const createUserResponse = await createUser(token, existingUser as CreateUserInput);
+      const createUserResponse = await createUser(token, existingUser);
 
       expect(createUserResponse.body).to.have.property('errors');
       expect(createUserResponse.body.errors[0].code).to.equal(400);
@@ -267,14 +262,6 @@ describe('GraphQL', () => {
   });
 
   describe('Get User', () => {
-    interface CreateUserInput {
-      name: string;
-      email: string;
-      password: string;
-      birthDate: string;
-      cpf: number;
-    }
-
     const getUser = (token: string, id: string) => {
       return request.post('/').auth(token, { type: 'bearer' }).send({
         query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
@@ -285,19 +272,19 @@ describe('GraphQL', () => {
     let userRepository: Repository<User>;
     let token: string;
     const unencryptedPassword = 'Supersafe';
-    const existingUser: Partial<User> = {
+    const existingUser: CreateUserInput = {
       name: 'existing',
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     const newUser: CreateUserInput = {
       name: 'new',
       email: 'new-email@example.com',
       password: unencryptedPassword,
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
 
     before(() => {
@@ -359,23 +346,15 @@ describe('GraphQL', () => {
   });
 
   describe('Get Users', () => {
-    interface CreateUserInput {
-      name: string;
-      email: string;
-      password: string;
-      birthDate: string;
-      cpf: number;
-    }
-
     interface UsersInput {
       count?: number;
       skip?: number;
     }
 
     const getUsers = (token: string, input?: UsersInput) => {
-      const variables = input || null;
+      const variables = { data: { ...input } };
       return request.post('/').auth(token, { type: 'bearer' }).send({
-        query: `query getUsers($count: Int, $skip: Int) { users(count: $count, skip: $skip) { hasMore users { id name email birthDate cpf } } }`,
+        query: `query getUsers($data: UsersInput!) { users(data: $data) { hasMore users { id name email birthDate cpf } } }`,
         variables,
       });
     };
@@ -386,12 +365,9 @@ describe('GraphQL', () => {
         return user;
       });
 
-    const verifyGetUsers = async (count?: number, skip?: number) => {
-      count = count || null;
-      skip = skip || null;
-
+    const verifyGetUsers = async (count = 10, skip?: number) => {
       const [databaseUsers, getUsersResponse] = await Promise.all([
-        userRepository.find({ take: count || 10, skip, order: { name: 'ASC' } }),
+        userRepository.find({ take: count, skip, order: { name: 'ASC' } }),
         getUsers(token, { count, skip }),
       ]);
       const expectedUsers = parseDatabaseUsers(databaseUsers);
@@ -408,7 +384,7 @@ describe('GraphQL', () => {
       email: 'existing-email@example.com',
       password: encrypt(unencryptedPassword),
       birthDate: '01-01-1970',
-      cpf: 28,
+      cpf: '28',
     };
     // const newUser: CreateUserInput = {
     //   name: 'new',
@@ -439,9 +415,7 @@ describe('GraphQL', () => {
     });
 
     it(`Gets all users`, async () => {
-      const count = existingUsersCount;
-
-      await verifyGetUsers(count);
+      await verifyGetUsers(existingUsersCount);
     });
 
     it(`Fails to get users without a valid token`, async () => {
@@ -455,29 +429,31 @@ describe('GraphQL', () => {
     });
 
     describe('Pagination', () => {
+      const pageSize = 50;
+
       it('Gets users from the beggining of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
+        const count = pageSize;
         const skip = 0;
 
         await verifyGetUsers(count, skip);
       });
 
       it('Gets users from the middle of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
-        const skip = ((existingUsersCount / 5) * 2) | 0;
+        const count = pageSize;
+        const skip = pageSize;
 
         await verifyGetUsers(count, skip);
       });
 
       it('Gets users from the end of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
-        const skip = ((existingUsersCount / 5) * 4) | 0;
+        const count = pageSize;
+        const skip = existingUsersCount - pageSize / 2;
 
         await verifyGetUsers(count, skip);
       });
 
       it('Gets users from beyond the end of the list', async () => {
-        const count = ((existingUsersCount / 5) * 2) | 0;
+        const count = pageSize;
         const skip = existingUsersCount + 1;
 
         await verifyGetUsers(count, skip);

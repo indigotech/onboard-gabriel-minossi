@@ -1,7 +1,8 @@
+import { UserModel } from '@src/model/user.model';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
-export class User {
+export class User implements UserModel {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
@@ -18,5 +19,5 @@ export class User {
   birthDate: string;
 
   @Column()
-  cpf: number;
+  cpf: string;
 }
