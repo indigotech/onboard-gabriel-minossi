@@ -1,6 +1,5 @@
 import { UserInputModel, UserModel } from '@src/business/model/user.model';
 import { UseCase } from '@src/business/rule/use-case';
-import { User } from '@src/data/entity/User';
 import { UserDbDataSource } from '@src/data/source/user.db.datasource';
 import { HttpError } from '@src/error';
 import { encrypt } from '@src/helpers';

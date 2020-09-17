@@ -6,12 +6,13 @@ import { UsersInput } from '@src/api/graphql/users.input';
 import { Users } from '@src/api/graphql/users.type';
 import { LoginModel } from '@src/business/model/user.model';
 import { CreateUserUseCase } from '@src/business/rule/create-user.use-case';
+import { UserUseCase } from '@src/business/rule/user.use-case';
+import { UsersUseCase } from '@src/business/rule/users.use-case';
 import { User as RepositoryUser } from '@src/data/entity/User';
 import { HttpError } from '@src/error';
 import * as bcrypt from 'bcrypt';
-import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
-import { Arg, Authorized, Ctx, ID, Mutation, Query, Resolver } from 'type-graphql';
+import { Arg, Authorized, ID, Mutation, Query, Resolver } from 'type-graphql';
 import { Container, Service } from 'typedi';
 import { getRepository } from 'typeorm';
 
@@ -19,6 +20,8 @@ import { getRepository } from 'typeorm';
 @Resolver(() => User)
 export class UserResolver {
   private createUserUseCase = Container.get(CreateUserUseCase);
+  private userUseCase = Container.get(UserUseCase);
+  private usersUseCase = Container.get(UsersUseCase);
 
   private userRepository = getRepository(RepositoryUser);
 
@@ -48,29 +51,19 @@ export class UserResolver {
 
   @Authorized()
   @Query(() => User, { description: 'Busca o usuário que possui o id = id' })
-  async user(@Arg('id', () => ID) id: string, @Ctx() context: Context) {
-    const user = id && (await this.userRepository.findOne({ id }));
-    if (!user) {
-      throw new HttpError(404, 'User not found');
-    }
-
-    delete user.password;
-    return user;
+  async user(@Arg('id', () => ID) id: string) {
+    return this.userUseCase.exec(id);
   }
 
   @Authorized()
   @Query(() => Users, { description: 'Busca count usuários depois de skip em ordem alfabética' })
-  async users(@Arg('data') { count, skip = 0 }: UsersInput, @Ctx() context: Context) {
-    const [users, usersCount] = await this.userRepository.findAndCount({ take: count, skip, order: { name: 'ASC' } });
-
-    const hasMore = usersCount - skip - count > 0;
-
-    return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
+  async users(@Arg('data') data: UsersInput) {
+    return this.usersUseCase.exec(data);
   }
 
   @Authorized()
   @Mutation(() => User, { description: 'Cria um novo usuário' })
-  async createUser(@Arg('data') data: CreateUserInput, @Ctx() context: Context) {
+  async createUser(@Arg('data') data: CreateUserInput) {
     return this.createUserUseCase.exec(data);
   }
 }

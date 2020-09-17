@@ -1,6 +1,5 @@
 import { HttpError } from '@src/error';
 import * as bcrypt from 'bcrypt';
-import { Context } from 'graphql-yoga/dist/types';
 import * as jwt from 'jsonwebtoken';
 
 export const encrypt = (password) => {

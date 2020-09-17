@@ -1,5 +1,6 @@
 import { CreateUserInput } from '@src/api/graphql/create-user.input';
 import { LoginInput } from '@src/api/graphql/login.input';
+import { UsersInput } from '@src/api/graphql/users.input';
 import { setupGraphQL } from '@src/api/server-setup';
 import { setupTypeORM } from '@src/data/database-setup';
 import { User } from '@src/data/entity/User';
@@ -329,7 +330,7 @@ describe('GraphQL', () => {
       const getUserResponse = await getUser(token, '');
 
       expect(getUserResponse.body).to.have.property('errors');
-      expect(getUserResponse.body.errors[0].code).to.equal(404);
+      expect(getUserResponse.body.errors[0].code).to.equal(400);
     });
 
     it('Fails to get user if user is not logged in', async () => {
@@ -346,11 +347,6 @@ describe('GraphQL', () => {
   });
 
   describe('Get Users', () => {
-    interface UsersInput {
-      count?: number;
-      skip?: number;
-    }
-
     const getUsers = (token: string, input?: UsersInput) => {
       const variables = { data: { ...input } };
       return request.post('/').auth(token, { type: 'bearer' }).send({

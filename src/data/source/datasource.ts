@@ -1,5 +1,5 @@
 import { HttpError } from '@src/error';
-import { Entity, FindConditions, Repository, DeepPartial } from 'typeorm';
+import { DeepPartial, FindConditions, FindManyOptions, Repository } from 'typeorm';
 
 export class DataSource<Entity> {
   constructor(protected readonly dbRepository: Repository<Entity>) {}
@@ -8,10 +8,20 @@ export class DataSource<Entity> {
     const entity: Entity = await this.dbRepository.findOne({ where: conditions });
 
     if (!entity) {
-      throw new HttpError(404, `${Entity.constructor.name} not found`);
+      throw new HttpError(404, `${this.dbRepository.metadata.name} not found`);
     }
 
     return entity;
+  }
+
+  async findMany(options: FindManyOptions<Entity>): Promise<[Entity[], number]> {
+    const entities: [Entity[], number] = await this.dbRepository.findAndCount(options);
+
+    if (!entities.length) {
+      throw new HttpError(404, `${this.dbRepository.metadata.name} not found`);
+    }
+
+    return entities;
   }
 
   async insert(input: DeepPartial<Entity>): Promise<Entity> {
