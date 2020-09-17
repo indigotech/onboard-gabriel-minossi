@@ -19,7 +19,6 @@ describe('GraphQL', () => {
   before(async () => {
     request = supertest(`${process.env.GRAPHQL_HOST}:${process.env.GRAPHQL_PORT}`);
     [graphQLServer] = await Promise.all([setupGraphQL(), setupTypeORM()]);
-    console.log();
   });
 
   after(async () => {

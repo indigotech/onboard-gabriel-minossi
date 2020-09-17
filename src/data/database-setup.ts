@@ -1,6 +1,7 @@
 import { HttpError } from '@src/error';
 import * as dotenv from 'dotenv';
-import { createConnection } from 'typeorm';
+import { Container } from 'typedi';
+import { createConnection, useContainer } from 'typeorm';
 
 if (process.env.NODE_ENV === 'test') {
   dotenv.config({ path: `${process.cwd()}/.env.test` });
@@ -10,6 +11,7 @@ if (process.env.NODE_ENV === 'test') {
 
 export const setupTypeORM = async () => {
   try {
+    useContainer(Container);
     await createConnection();
   } catch (error) {
     throw new HttpError(503, 'Are you sure the Docker database container is up?', error);
