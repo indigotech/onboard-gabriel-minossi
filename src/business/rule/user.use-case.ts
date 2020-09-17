@@ -1,8 +1,8 @@
 import { UserModel } from '@src/business/model/user.model';
 import { UseCase } from '@src/business/rule/use-case';
 import { UserDbDataSource } from '@src/data/source/user.db.datasource';
-import { Container, Service } from 'typedi';
 import { HttpError } from '@src/error';
+import { Container, Service } from 'typedi';
 
 @Service()
 export class UserUseCase extends UseCase<string, UserModel> {
