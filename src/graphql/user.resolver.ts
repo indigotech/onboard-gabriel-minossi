@@ -32,12 +32,12 @@ export class UserResolver {
     }
   }
 
-  @Query(() => String)
+  @Query(() => String, { description: 'Query básica de hello world' })
   hello() {
     return 'Hello!';
   }
 
-  @Mutation(() => Login, { description: 'Authenticate' })
+  @Mutation(() => Login, { description: 'Autenticação de um usuário no sistema' })
   async login(@Arg('data') { email, password, rememberMe }: LoginInput): Promise<LoginModel> {
     const isValid = (email: string): boolean => /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/.test(email);
     if (!isValid(email)) {
@@ -56,7 +56,7 @@ export class UserResolver {
     return { user, token };
   }
 
-  @Query(() => User)
+  @Query(() => User, { description: 'Busca o usuário que possui o id = id' })
   async user(@Arg('id', () => ID) id: string, @Ctx() context: Context) {
     this.getVerification(context);
 
@@ -69,7 +69,7 @@ export class UserResolver {
     return user;
   }
 
-  @Query(() => Users)
+  @Query(() => Users, { description: 'Busca count usuários depois de skip em ordem alfabética' })
   async users(@Arg('data') { count, skip = 0 }: UsersInput, @Ctx() context: Context) {
     this.getVerification(context);
 
@@ -80,7 +80,7 @@ export class UserResolver {
     return { users, hasMore, skippedUsers: skip, totalUsers: usersCount };
   }
 
-  @Mutation(() => User)
+  @Mutation(() => User, { description: 'Cria um novo usuário' })
   async createUser(@Arg('data') { name, email, password, birthDate, cpf }: CreateUserInput, @Ctx() context: Context) {
     this.getVerification(context);
 

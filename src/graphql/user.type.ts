@@ -1,20 +1,20 @@
 import { UserModel } from '@src/model/user.model';
 import { Field, ID, ObjectType } from 'type-graphql';
 
-@ObjectType()
+@ObjectType({ description: 'Informações de um usuário existente' })
 export class User implements UserModel {
-  @Field(() => ID, { description: 'User id' })
+  @Field(() => ID, { description: 'Id do usuário' })
   id: string;
 
-  @Field({ description: 'User name' })
+  @Field({ description: 'Nome do usuário' })
   name: string;
 
-  @Field({ description: 'User email' })
+  @Field({ description: 'Email do usuário' })
   email: string;
 
-  @Field({ description: 'User birth date' })
+  @Field({ description: 'Data de nascimento do usuário' })
   birthDate: string;
 
-  @Field({ description: 'User cpf' })
+  @Field({ description: 'CPF do usuário' })
   cpf: string;
 }

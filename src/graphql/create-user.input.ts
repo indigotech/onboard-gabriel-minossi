@@ -1,20 +1,20 @@
 import { UserInputModel } from '@src/model/user.model';
 import { Field, InputType } from 'type-graphql';
 
-@InputType()
+@InputType({ description: 'Objeto de entrada para a criação de um novo usuário' })
 export class CreateUserInput implements UserInputModel {
-  @Field({ description: 'User name' })
+  @Field({ description: 'Nome do novo usuário' })
   name: string;
 
-  @Field({ description: 'User email' })
+  @Field({ description: 'Email do novo usuário' })
   email: string;
 
-  @Field({ description: 'User password' })
+  @Field({ description: 'Senha do novo usuário' })
   password: string;
 
-  @Field({ description: 'User birth date' })
+  @Field({ description: 'Data de nascimento do novo usuário' })
   birthDate: string;
 
-  @Field({ description: 'User cpf' })
+  @Field({ description: 'CPF do novo usuário' })
   cpf: string;
 }

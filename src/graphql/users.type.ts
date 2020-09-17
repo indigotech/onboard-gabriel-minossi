@@ -1,17 +1,17 @@
 import { Field, Int, ObjectType } from 'type-graphql';
 import { User } from './user.type';
 
-@ObjectType()
+@ObjectType({ description: 'Objeto de retorno de users' })
 export class Users {
-  @Field(() => [User], { description: 'User id' })
+  @Field(() => [User], { description: 'Usuários em ordem alfabética' })
   users: User[];
 
-  @Field({ description: 'User name' })
+  @Field({ description: 'Se há mais usuários no sistema' })
   hasMore: boolean;
 
-  @Field(() => Int, { description: 'User name' })
+  @Field(() => Int, { description: 'Quantos usuários foram pulados' })
   skippedUsers: number;
 
-  @Field(() => Int, { description: 'User name' })
+  @Field(() => Int, { description: 'Quantos usuários há no sistema' })
   totalUsers: number;
 }

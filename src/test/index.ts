@@ -31,9 +31,15 @@ describe('GraphQL', () => {
     it('Says hello :)', async () => {
       let helloResponse;
       try {
-        helloResponse = await request.post('/').send({
-          query: `query hello { hello }`,
-        });
+        helloResponse = await request
+          .post('/')
+          .send({
+            query: `query hello { hello }`,
+          })
+          .then((response) => {
+            console.log(response.body);
+            return response;
+          });
       } catch (error) {
         console.log(error);
       }
