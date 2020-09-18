@@ -1,6 +1,6 @@
-import { User } from '@src/typeorm/entity/User';
+import { setupTypeORM } from '@src/data/database-setup';
+import { User } from '@src/data/entity/User';
 import { encrypt } from '@src/helpers';
-import { setupTypeORM } from '@src/server-setup';
 import * as faker from 'faker';
 import { getConnection, getRepository } from 'typeorm';
 

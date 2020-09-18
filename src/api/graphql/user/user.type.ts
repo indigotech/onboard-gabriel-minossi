@@ -1,4 +1,4 @@
-import { UserModel } from '@src/model/user.model';
+import { UserModel } from '@src/business/model/user.model';
 import { Field, ID, ObjectType } from 'type-graphql';
 
 @ObjectType({ description: 'Informações de um usuário existente' })

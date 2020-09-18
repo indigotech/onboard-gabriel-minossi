@@ -1,8 +1,9 @@
+import { User } from '@src/api/graphql/user/user.type';
+import { UsersModel } from '@src/business/model/user.model';
 import { Field, Int, ObjectType } from 'type-graphql';
-import { User } from './user.type';
 
 @ObjectType({ description: 'Objeto de retorno de users' })
-export class Users {
+export class Users implements UsersModel {
   @Field(() => [User], { description: 'Usuários em ordem alfabética' })
   users: User[];
 

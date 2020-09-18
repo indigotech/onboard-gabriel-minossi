@@ -1,4 +1,4 @@
-import { UserModel } from '@src/model/user.model';
+import { UserModel } from '@src/business/model/user.model';
 import { Column, Entity, PrimaryGeneratedColumn } from 'typeorm';
 
 @Entity()
