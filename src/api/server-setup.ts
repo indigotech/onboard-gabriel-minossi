@@ -1,4 +1,4 @@
-import { UserResolver } from '@src/api/graphql/user.resolver';
+import { UserResolver } from '@src/api/graphql/user/user.resolver';
 import { formatError, HttpError } from '@src/error';
 import { getVerification } from '@src/helpers';
 import { GraphQLServer } from 'graphql-yoga';

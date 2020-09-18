@@ -1,6 +1,6 @@
 import { DataSource } from '@src/data/source/datasource';
 
-export abstract class UseCase<TRequest, TResult> {
-  protected abstract readonly dataSource: DataSource<any>;
-  abstract exec(requestObject: TRequest): Promise<TResult>;
+export interface UseCase<TRequest, TResult, TSource> {
+  readonly dataSource: DataSource<TSource>;
+  exec(requestObject: TRequest): Promise<TResult>;
 }

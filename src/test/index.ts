@@ -1,7 +1,8 @@
-import { CreateUserInput } from '@src/api/graphql/create-user.input';
-import { LoginInput } from '@src/api/graphql/login.input';
-import { UsersInput } from '@src/api/graphql/users.input';
+import { CreateUserInput } from '@src/api/graphql/user/create-user.input';
+import { GetUsersInput } from '@src/api/graphql/user/get-users.input';
+import { LoginInput } from '@src/api/graphql/user/login.input';
 import { setupGraphQL } from '@src/api/server-setup';
+import { UserTokenData } from '@src/business/model/user.model';
 import { setupTypeORM } from '@src/data/database-setup';
 import { User } from '@src/data/entity/User';
 import { encrypt } from '@src/helpers';
@@ -90,10 +91,8 @@ describe('GraphQL', () => {
       const loginResponse = await login(correctCredentials);
       const token = loginResponse.body.data.login.token;
       expect(token, 'Missing token').to.exist;
-      const verification = verifyToken(token, process.env.JWT_SECRET);
-      expect(verification['id'], 'Token does not match user information').to.equal(
-        loginResponse.body.data.login.user.id,
-      );
+      const verification = verifyToken(token, process.env.JWT_SECRET) as UserTokenData;
+      expect(verification.id, 'Token does not match user information').to.equal(loginResponse.body.data.login.user.id);
     });
 
     it(`Successfully returns the right user for the correct credentials`, async () => {
@@ -264,10 +263,13 @@ describe('GraphQL', () => {
 
   describe('Get User', () => {
     const getUser = (token: string, id: string) => {
-      return request.post('/').auth(token, { type: 'bearer' }).send({
-        query: `query user($id: ID!) { user(id: $id) { id name email birthDate cpf } }`,
-        variables: { id },
-      });
+      return request
+        .post('/')
+        .auth(token, { type: 'bearer' })
+        .send({
+          query: `query user($data: GetUserInput!) { user(data: $data) { id name email birthDate cpf } }`,
+          variables: { data: { id } },
+        });
     };
 
     let userRepository: Repository<User>;
@@ -347,10 +349,10 @@ describe('GraphQL', () => {
   });
 
   describe('Get Users', () => {
-    const getUsers = (token: string, input?: UsersInput) => {
+    const getUsers = (token: string, input?: GetUsersInput) => {
       const variables = { data: { ...input } };
       return request.post('/').auth(token, { type: 'bearer' }).send({
-        query: `query getUsers($data: UsersInput!) { users(data: $data) { hasMore users { id name email birthDate cpf } } }`,
+        query: `query getUsers($data: GetUsersInput!) { users(data: $data) { hasMore users { id name email birthDate cpf } } }`,
         variables,
       });
     };
